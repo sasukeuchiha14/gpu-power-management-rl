@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.save
+
+# C/C++ build outputs and executables
+*.o
+*.obj
+*.so
+*.dylib
+*.exe
+gaussian
+gpus/rtx4500_ada/benchmarks/gaussian
+gpus/rtx4500_ada/benchmarks/custom_benchmarks/*.o
+
+# Archives & Temporary logs
+*.zip
+*.tar.gz
+*.rar
+*.log
+output.txt
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE and Editor settings
+.vscode/
+.idea/
+.DS_Store
+*.swp

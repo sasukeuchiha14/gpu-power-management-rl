@@ -1,0 +1,61 @@
+{
+  "numeric_cols": [
+    "Core_F",
+    "Mem_F",
+    "Avg_Time_S",
+    "Avg_Pwr_W",
+    "Peak_T_C",
+    "Avg_Util_PCT"
+  ],
+  "ranges": {
+    "Core_F": {
+      "min": 1000.0,
+      "max": 2950.0
+    },
+    "Mem_F": {
+      "min": 5001.0,
+      "max": 9501.0
+    },
+    "Avg_Time_S": {
+      "min": 0.0005,
+      "max": 42.8177
+    },
+    "Avg_Pwr_W": {
+      "min": 23.86,
+      "max": 184.99
+    },
+    "Peak_T_C": {
+      "min": 44.0,
+      "max": 82.0
+    },
+    "Avg_Util_PCT": {
+      "min": 0.0,
+      "max": 97.84
+    }
+  },
+  "state_col_order": [
+    "Core_F",
+    "Mem_F",
+    "Avg_Time_S",
+    "Avg_Pwr_W",
+    "Peak_T_C",
+    "Avg_Util_PCT",
+    "Workload_Name_backprop",
+    "Workload_Name_crypto_hash",
+    "Workload_Name_cupy_fft",
+    "Workload_Name_cupy_matmul",
+    "Workload_Name_gaussian",
+    "Workload_Name_hotspot",
+    "Workload_Name_lud",
+    "Workload_Name_myocyte",
+    "Workload_Name_nw",
+    "Workload_Name_pathfinder",
+    "Workload_Name_pt_bert",
+    "Workload_Name_pt_resnet50",
+    "Workload_Name_render_proxy",
+    "Workload_Name_streamcluster",
+    "Workload_Type_0",
+    "Workload_Type_1",
+    "Workload_Type_2"
+  ]
+}
