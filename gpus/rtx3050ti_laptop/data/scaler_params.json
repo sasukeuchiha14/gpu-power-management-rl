@@ -1,0 +1,54 @@
+{
+  "numeric_cols": [
+    "Core_F",
+    "Mem_F",
+    "Avg_Time_S",
+    "Avg_Pwr_W",
+    "Peak_T_C",
+    "Avg_Util_PCT"
+  ],
+  "ranges": {
+    "Core_F": {
+      "min": 500.0,
+      "max": 1900.0
+    },
+    "Mem_F": {
+      "min": 0.0,
+      "max": 5871.0
+    },
+    "Avg_Time_S": {
+      "min": 3.1679,
+      "max": 21.1021
+    },
+    "Avg_Pwr_W": {
+      "min": 10.16,
+      "max": 40.92
+    },
+    "Peak_T_C": {
+      "min": 52.0,
+      "max": 65.0
+    },
+    "Avg_Util_PCT": {
+      "min": 0.0,
+      "max": 64.93
+    }
+  },
+  "state_col_order": [
+    "Core_F",
+    "Mem_F",
+    "Avg_Time_S",
+    "Avg_Pwr_W",
+    "Peak_T_C",
+    "Avg_Util_PCT",
+    "Workload_Name_pt_bert",
+    "Workload_Name_pt_crypto_proxy",
+    "Workload_Name_pt_fft",
+    "Workload_Name_pt_matmul",
+    "Workload_Name_pt_resnet50",
+    "Workload_Name_pt_resnet50_train",
+    "Workload_Name_pt_vector_add",
+    "Workload_Type_0",
+    "Workload_Type_1",
+    "Workload_Type_2"
+  ]
+}
