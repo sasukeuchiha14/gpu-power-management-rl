@@ -23,6 +23,8 @@ This directory contains a customized version of the RL DVFS controller framework
 * `models/`: 1D Core-tuning Gym environment (`dvfs_env.py`), DDQN architecture (`ddqn_agent.py`), and training loop (`train_ddqn.py`).
 * `weights/`: Trained PyTorch network weights (`ddqn_weights.pth`).
 * `deployment/`: Real-time Windows deployment daemon (`sim_to_real_deploy.py`) with Administrator privilege checking and 80°C thermal safety override.
+* `evaluation/`: Model performance visualizer (`evaluate_baselines.py`, `evaluate_forced.py`) and live A/B hardware power measurement tools (`measure_edp.py`, `plot_edp.py`).
+* `logs_and_plots/`: Generated evaluation graphs (`rtx3050ti_proof_graph.png`, `rtx3050ti_waterfall_graph.png`, `edp_comparison.png`).
 
 ---
 
@@ -39,7 +41,7 @@ Sweep 15 core clock frequencies across 7 benchmarks:
 ```cmd
 python data_collection\generate_dataset.py
 ```
-*(If you need to stop early, press `Ctrl+C`. The script catch block automatically executes `nvidia-smi -rgc` to restore automatic GPU governor scaling).*
+*(If you need to stop early, press `Ctrl+C`. The script automatically executes `nvidia-smi -rgc` to restore automatic GPU governor scaling).*
 
 ### Step 3: Preprocess & Export Scaler (Run on Research PC or Laptop)
 ```cmd
@@ -53,13 +55,34 @@ Train the DDQN model in simulation (800 episodes):
 python models\train_ddqn.py
 ```
 
-### Step 5: Test Live Deployment
+### Step 5: Evaluate Model & Generate Proof Graphs
+Generate comparison graphs and recovery waterfall plots for your reports/presentations:
+```cmd
+python evaluation\evaluate_baselines.py
+python evaluation\evaluate_forced.py
+```
+*(Outputs saved to `logs_and_plots/rtx3050ti_proof_graph.png` and `logs_and_plots/rtx3050ti_waterfall_graph.png`).*
+
+### Step 6: Test Real-Time Deployment
 Run the live user-space daemon to observe state reconstruction and decisions:
 ```cmd
 python deployment\sim_to_real_deploy.py
 ```
 * By default, `DRY_RUN = True` is enabled (observe-only mode).
 * To actuate real-time hardware clock locks, set `DRY_RUN = False` inside `deployment/sim_to_real_deploy.py`.
+
+### Step 7: Empirical A/B Hardware Power Measurement
+To measure live physical power and energy savings between the stock NVIDIA governor and the AI daemon on your laptop:
+```cmd
+:: 1. Measure Governor Baseline
+python evaluation\measure_edp.py governor 10
+
+:: 2. Measure AI Daemon (Run sim_to_real_deploy.py in another terminal first)
+python evaluation\measure_edp.py ai 10
+
+:: 3. Generate Comparison Plot
+python evaluation\plot_edp.py
+```
 
 ---
 
