@@ -45,15 +45,30 @@ WORKLOAD_NAME = sys.argv[3] if len(sys.argv) > 3 else os.environ.get("WORKLOAD_N
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _BENCH_DIR = os.path.join(os.path.dirname(_SCRIPT_DIR), "benchmarks")
+_PYTHON_GPU = "/home/pesu-rf/anaconda3/envs/llm_gpu/bin/python3"
+if not os.path.exists(_PYTHON_GPU):
+    _PYTHON_GPU = "python3"
+_ZS_DIR = os.path.join(_BENCH_DIR, "zero_shot_workloads")
 
 # Low-optimum workloads (real, verified running -- see dvfs-triage / CLAUDE.md
 # section 7). Edit/extend this table to target a different one via argv[3].
+# IN_DATASET workloads were profiled and trained on; ZERO_SHOT ones were
+# never profiled or trained on -- the daemon must nearest-neighbour-guess
+# their identity from live telemetry (dvfs-triage B1). Keep the two lists
+# accurate when you add entries; the test-report table generator reads them.
+IN_DATASET_WORKLOADS = {"nw", "pathfinder", "backprop", "streamcluster"}
+ZERO_SHOT_WORKLOADS = {"resnet18", "transformer", "elementwise"}
+
 _WORKLOAD_TABLE = {
     "nw": [os.path.join(_BENCH_DIR, "nw", "needle"), "16384", "10"],
     "pathfinder": [os.path.join(_BENCH_DIR, "pathfinder", "pathfinder"), "100000", "100", "20"],
     "backprop": [os.path.join(_BENCH_DIR, "backprop", "backprop"), "65536"],
     "streamcluster": [os.path.join(_BENCH_DIR, "streamcluster", "sc_gpu"),
                        "10", "20", "256", "65536", "65536", "1000", "none", "output.txt", "1"],
+    # -- zero-shot / never trained on --
+    "resnet18": [_PYTHON_GPU, os.path.join(_ZS_DIR, "ai_workloads.py"), "resnet18"],
+    "transformer": [_PYTHON_GPU, os.path.join(_ZS_DIR, "ai_workloads.py"), "transformer"],
+    "elementwise": [_PYTHON_GPU, os.path.join(_ZS_DIR, "data_workloads.py"), "elementwise"],
 }
 if WORKLOAD_NAME not in _WORKLOAD_TABLE:
     raise SystemExit(f"Unknown WORKLOAD_NAME '{WORKLOAD_NAME}'. Choices: {list(_WORKLOAD_TABLE)}")

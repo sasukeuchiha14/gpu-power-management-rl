@@ -118,10 +118,17 @@ python deployment/sim_to_real_deploy.py
 
 ## 📊 Results Summary
 
-Under real-world workloads, the DDQN controller achieves:
-* **~18% to 26% Energy Savings** compared to standard GPU race-to-idle governors.
-* **Reduced Peak Temperatures** by keeping frequencies dynamically scaled to workload intensity.
-* **Sub-50ms Decision Latency**, enabling seamless user-space execution without frame drops or throughput stalls.
+Live A/B measurements on the RTX 4500 (`gpus/rtx4500_ada/TEST_REPORT_18aug2026.md`, 6 workloads: 3
+trained-on, 3 held out entirely from training as a zero-shot generalization test):
+* **4 of 6 workloads: 13.5% to 33.6% energy saved** vs the stock max-clock governor, including 2 of the
+  3 zero-shot (never-trained-on) workloads.
+* **2 of 6 workloads regressed slightly** (-0.7% to -1.7%) -- mean power dropped but wall-clock time grew
+  enough to net a small energy loss. Not explained by trained-vs-zero-shot; correlates with noisy live
+  utilization causing jittery clock changes. See the report for the honest breakdown, including where the
+  do-no-harm arbiter did and didn't catch it.
+* **Decision latency is 70-90ms mean** (up to ~200ms peak) in the current implementation, not the ~50ms
+  originally targeted -- root-caused to per-tick `nvidia-smi` subprocess spawns and CPU-only inference;
+  see `TEST_REPORT_18aug2026.md` for detail and the open fix.
 
 ---
 
