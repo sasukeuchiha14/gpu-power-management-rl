@@ -36,18 +36,28 @@ class AdvancedDVFSEnv(gym.Env):
         if not os.path.exists(scaler_json) and os.path.exists("scaler_params.json"):
             scaler_json = "scaler_params.json"
 
+        df_feature_cols = [col for col in self.df.columns if col not in ['EDP', 'Reward']]
         if os.path.exists(scaler_json):
             with open(scaler_json) as f:
                 sc = json.load(f)
             if sc.get("state_col_order"):
                 self.state_cols = sc["state_col_order"]
-                for c in self.state_cols:
-                    if c not in self.df.columns:
-                        self.df[c] = 0.0
+                missing = [c for c in self.state_cols if c not in self.df.columns]
+                assert not missing, (
+                    f"scaler_params.json expects {len(self.state_cols)} features but "
+                    f"{dataset_path} is missing {missing}. This is the silent scaler-drift bug "
+                    f"from dvfs-triage A4 -- re-run preprocess.py then export_scaler.py so both "
+                    f"agree, instead of papering over it here."
+                )
+                extra = [c for c in df_feature_cols if c not in self.state_cols]
+                assert not extra, (
+                    f"{dataset_path} has {len(extra)} feature(s) not in scaler_params.json: {extra}. "
+                    f"Re-run export_scaler.py after preprocessing."
+                )
             else:
-                self.state_cols = [col for col in self.df.columns if col not in ['EDP', 'Reward']]
+                self.state_cols = df_feature_cols
         else:
-            self.state_cols = [col for col in self.df.columns if col not in ['EDP', 'Reward']]
+            self.state_cols = df_feature_cols
 
         self.workload_cols = [col for col in self.df.columns if col.startswith('Workload_Name_')]
         

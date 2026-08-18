@@ -17,11 +17,11 @@
       "max": 9501.0
     },
     "Avg_Time_S": {
-      "min": 0.0005,
+      "min": 0.0718,
       "max": 42.8177
     },
     "Avg_Pwr_W": {
-      "min": 23.86,
+      "min": 26.64,
       "max": 184.99
     },
     "Peak_T_C": {
@@ -29,7 +29,7 @@
       "max": 82.0
     },
     "Avg_Util_PCT": {
-      "min": 0.0,
+      "min": 4.0,
       "max": 97.84
     }
   },
@@ -42,17 +42,22 @@
     "Avg_Util_PCT",
     "Workload_Name_backprop",
     "Workload_Name_crypto_hash",
-    "Workload_Name_cupy_fft",
+    "Workload_Name_cupy_fft_fixed",
     "Workload_Name_cupy_matmul",
     "Workload_Name_gaussian",
-    "Workload_Name_hotspot",
+    "Workload_Name_lavamd",
     "Workload_Name_lud",
     "Workload_Name_myocyte",
     "Workload_Name_nw",
+    "Workload_Name_particlefilter_float",
+    "Workload_Name_particlefilter_naive",
     "Workload_Name_pathfinder",
     "Workload_Name_pt_bert",
+    "Workload_Name_pt_cnn",
+    "Workload_Name_pt_lstm",
     "Workload_Name_pt_resnet50",
     "Workload_Name_render_proxy",
+    "Workload_Name_srad",
     "Workload_Name_streamcluster",
     "Workload_Type_0",
     "Workload_Type_1",

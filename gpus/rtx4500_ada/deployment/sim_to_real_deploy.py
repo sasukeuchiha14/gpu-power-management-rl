@@ -3,21 +3,26 @@ sim_to_real_deploy.py  —  Phase 3 live controller for the RTX 4500.
 
 Takes the DDQN trained in simulation (ddqn_weights.pth) and runs it as a real-time
 DVFS control loop on the physical GPU: every ~50ms it reads live NVML telemetry,
-rebuilds the 23-feature state the network expects, picks an action, and steps the
+rebuilds the state the network expects (feature count/order comes from
+scaler_params.json, never hardcoded here), picks an action, and steps the
 core/memory clocks via nvidia-smi. A hard 85C safety net overrides the AI.
 
 SAFETY FIRST
 ------------
-  * DRY_RUN = True by default: it reads sensors and PRINTS the clocks it *would*
-    set, but does NOT touch the hardware. Watch it for a few minutes first.
-  * Only set DRY_RUN = False once the decisions look sane. Real clock control
-    needs sudo and `sudo nvidia-smi -pm 1` (persistence mode) enabled.
+  * Check the DRY_RUN flag below before running -- it does NOT default to
+    observe-only. When True, it reads sensors and PRINTS the clocks it
+    *would* set without touching hardware; when False it actuates real clocks
+    immediately. Watch a DRY_RUN=True run for a few minutes before flipping it.
+  * Real clock control needs `sudo nvidia-smi -pm 1` (persistence mode)
+    enabled once beforehand. No sudo needed on the outer `python3` command --
+    the clock-setting calls invoke `sudo nvidia-smi` themselves (this
+    machine's NOPASSWD sudoers rule is scoped to exactly /usr/bin/nvidia-smi).
 
 Prereqs on the RTX 4500 machine:
     sudo nvidia-smi -pm 1
     python3 export_scaler.py           # once, to create scaler_params.json
 Run:
-    sudo -E python3 sim_to_real_deploy.py
+    python3 sim_to_real_deploy.py
 Stop with Ctrl+C (clocks are automatically reset to default on exit).
 """
 import json
@@ -90,7 +95,7 @@ class LiveController:
         with open(scaler_path) as f:
             sc = json.load(f)
         self.ranges = sc["ranges"]
-        self.state_cols = sc["state_col_order"]        # 23 features, in net order
+        self.state_cols = sc["state_col_order"]        # feature count/order comes from the scaler, not hardcoded
         self.n_features = len(self.state_cols)
 
         # --- Dataset used to reconstruct the non-observable features ---
@@ -182,9 +187,9 @@ class LiveController:
     def set_clocks(self, core_mhz, mem_mhz):
         if DRY_RUN:
             return
-        subprocess.run(["nvidia-smi", "-lgc", f"{core_mhz},{core_mhz}"],
+        subprocess.run(["sudo", "nvidia-smi", "-lgc", f"{core_mhz},{core_mhz}"],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(["nvidia-smi", "-lmc", f"{mem_mhz},{mem_mhz}"],
+        subprocess.run(["sudo", "nvidia-smi", "-lmc", f"{mem_mhz},{mem_mhz}"],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def safety_override(self):
@@ -198,8 +203,8 @@ class LiveController:
     def reset_clocks(self):
         if DRY_RUN:
             return
-        subprocess.run(["nvidia-smi", "-rgc"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(["nvidia-smi", "-rmc"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "nvidia-smi", "-rgc"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "nvidia-smi", "-rmc"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def run(self):
         period = LOOP_MS / 1000.0

@@ -36,6 +36,29 @@ def preprocess_data():
     df = pd.read_csv(input_file)
 
     # ==========================================
+    # STEP 0: DROP DEAD WORKLOADS + DE-DUPLICATE REPEAT TRIALS
+    # ==========================================
+    # hotspot/heartwall/cupy_fft never actually ran on the GPU (0-2% util,
+    # try/except:pass in the collector silently recorded the failures as data).
+    # See dvfs-triage A2. Keeping them teaches the policy noise, not signal.
+    DEAD_WORKLOADS = ["hotspot", "heartwall", "cupy_fft"]
+    before = len(df)
+    df = df[~df['Workload_Name'].isin(DEAD_WORKLOADS)].copy()
+    print(f"0. Dropped dead workloads {DEAD_WORKLOADS}: {before} -> {len(df)} rows.")
+
+    # Every (workload, core, mem) cell was profiled twice because the collector
+    # appends on every run (triage A6). Treat the pair as repeat trials and
+    # average them rather than silently double-counting or de-duplicating blind.
+    group_keys = ['Workload_Name', 'Workload_Type', 'Core_F', 'Mem_F']
+    avg_cols = ['Avg_Time_S', 'Avg_Pwr_W', 'Peak_T_C', 'Avg_Util_PCT', 'EDP']
+    trial_counts = df.groupby(group_keys).size()
+    print(f"   Repeat trials per (workload, core, mem) cell: min={trial_counts.min()}, "
+          f"max={trial_counts.max()} (n={int(trial_counts.median())} typical).")
+    n_rows_pre_avg = int(trial_counts.sum())
+    df = df.groupby(group_keys, as_index=False)[avg_cols].mean()
+    print(f"   Averaged repeat trials: {n_rows_pre_avg} rows collapsed to {len(df)} unique configs.")
+
+    # ==========================================
     # STEP 1: ONE-HOT ENCODING
     # ==========================================
     print("1. Performing One-Hot Encoding on categorical variables...")

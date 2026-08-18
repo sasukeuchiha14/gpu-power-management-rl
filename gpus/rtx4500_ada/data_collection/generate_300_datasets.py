@@ -11,7 +11,10 @@ benchmarks_dir = os.path.join(gpu_root, "benchmarks")
 data_dir = os.path.join(gpu_root, "data")
 os.makedirs(data_dir, exist_ok=True)
 
-gaussian_bin = os.path.relpath(os.path.join(benchmarks_dir, "gaussian"), script_dir)
+def _bin(name):
+    return os.path.relpath(os.path.join(benchmarks_dir, name), script_dir)
+
+gaussian_bin = _bin("gaussian")
 
 # =================================================================
 # 1. EXPANDED WORKLOADS (3 BENCHMARKS)
@@ -19,14 +22,13 @@ gaussian_bin = os.path.relpath(os.path.join(benchmarks_dir, "gaussian"), script_
 BENCHMARKS = [
     # 1. GAUSSIAN (Compute Heavy)
     {"name": "gaussian", "path": gaussian_bin, "args": ["-s", "4096"], "category": 0},
-    
+
     # 2. LU DECOMPOSITION (Compute Heavy)
-    # Path is relative: Go up to cuda, down to lud, down to cuda
-    {"name": "lud", "path": "../lud/cuda/lud_cuda", "args": ["-s", "4096"], "category": 0},
-    
+    {"name": "lud", "path": _bin("lud/lud_cuda"), "args": ["-s", "4096"], "category": 0},
+
     # 3. NEEDLEMAN-WUNSCH (Integer/Memory Heavy)
     # Args: <dim> <penalty>
-    {"name": "nw", "path": "../nw/needle", "args": ["4096", "10"], "category": 1},
+    {"name": "nw", "path": _bin("nw/needle"), "args": ["4096", "10"], "category": 1},
 ]
 
 # =================================================================

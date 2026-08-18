@@ -14,6 +14,19 @@ gaussian
 gpus/rtx4500_ada/benchmarks/gaussian
 gpus/rtx4500_ada/benchmarks/custom_benchmarks/*.o
 
+# Vendored rodinia binaries (built from the .cu/.c source committed alongside
+# them via each workload's Makefile) -- source is tracked, compiled output isn't.
+gpus/rtx4500_ada/benchmarks/lud/lud_cuda
+gpus/rtx4500_ada/benchmarks/nw/needle
+gpus/rtx4500_ada/benchmarks/streamcluster/sc_gpu
+gpus/rtx4500_ada/benchmarks/pathfinder/pathfinder
+gpus/rtx4500_ada/benchmarks/backprop/backprop
+gpus/rtx4500_ada/benchmarks/myocyte/myocyte.out
+gpus/rtx4500_ada/benchmarks/srad/srad
+gpus/rtx4500_ada/benchmarks/lavaMD/lavaMD
+gpus/rtx4500_ada/benchmarks/particlefilter/particlefilter_naive
+gpus/rtx4500_ada/benchmarks/particlefilter/particlefilter_float
+
 # Archives & Temporary logs
 *.zip
 *.tar.gz

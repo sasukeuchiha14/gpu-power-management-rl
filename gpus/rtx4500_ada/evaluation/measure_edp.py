@@ -2,25 +2,34 @@
 """
 measure_edp.py  -- measure real energy/EDP of a workload under ONE clock policy.
 
-Run it TWICE to build an A/B comparison:
+Run it TWICE to build an A/B comparison. No sudo needed on the outer command --
+the clock-setting calls invoke `sudo nvidia-smi` themselves (this machine's
+NOPASSWD sudoers rule is scoped to exactly /usr/bin/nvidia-smi):
 
   # 1) Governor baseline (race-to-idle = pinned max clocks)
-  sudo -E /home/pesu-rf/anaconda3/bin/python3 measure_edp.py governor
+  python3 measure_edp.py governor
 
   # 2) AI daemon: start sim_to_real_deploy.py with DRY_RUN=False in ANOTHER
   #    terminal FIRST, then run this. It does NOT touch clocks itself; it just
-  #    generates the nw load (which the daemon reacts to) and measures power.
-  sudo -E /home/pesu-rf/anaconda3/bin/python3 measure_edp.py ai
+  #    generates the workload's load (which the daemon reacts to) and measures power.
+  python3 measure_edp.py ai
 
-IMPORTANT for the 'ai' run: do NOT also run a separate `while true; do nw; done`.
-Let THIS script be the only workload generator so both runs do identical work.
+IMPORTANT for the 'ai' run: do NOT also run a separate workload-generating loop
+yourself. Let THIS script be the only workload generator so both runs do
+identical work.
 
 Each run:
   * samples NVML power/clocks at 10 Hz in the background,
-  * runs the nw workload N times (default 20),
+  * runs the target workload N times (default 20),
   * writes power_<label>.csv and prints a summary (mean power, energy, EDP).
 
 Then:  python3 plot_edp.py   -> overlays the two runs into a comparison graph.
+
+18 Aug 2026: switched the default target from `nw` to `pathfinder` (dvfs-triage
+next-steps item -- the original nw headline result was already valid, but the
+*graph* that shipped alongside it used `hotspot`, which never actually ran on
+the GPU; this redoes it on a workload confirmed to be real). `nw` is still a
+valid choice -- pass it as WORKLOAD_NAME if you want to reproduce that run.
 """
 import sys
 import time
@@ -32,9 +41,23 @@ import os
 
 LABEL = sys.argv[1] if len(sys.argv) > 1 else "run"
 N_ITERS = int(sys.argv[2]) if len(sys.argv) > 2 else 20
+WORKLOAD_NAME = sys.argv[3] if len(sys.argv) > 3 else os.environ.get("WORKLOAD_NAME", "pathfinder")
 
-# Low-optimum, memory-light workload. Edit path/args if yours differ.
-WORKLOAD = ["../nw/needle", "16384", "10"]
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_BENCH_DIR = os.path.join(os.path.dirname(_SCRIPT_DIR), "benchmarks")
+
+# Low-optimum workloads (real, verified running -- see dvfs-triage / CLAUDE.md
+# section 7). Edit/extend this table to target a different one via argv[3].
+_WORKLOAD_TABLE = {
+    "nw": [os.path.join(_BENCH_DIR, "nw", "needle"), "16384", "10"],
+    "pathfinder": [os.path.join(_BENCH_DIR, "pathfinder", "pathfinder"), "100000", "100", "20"],
+    "backprop": [os.path.join(_BENCH_DIR, "backprop", "backprop"), "65536"],
+    "streamcluster": [os.path.join(_BENCH_DIR, "streamcluster", "sc_gpu"),
+                       "10", "20", "256", "65536", "65536", "1000", "none", "output.txt", "1"],
+}
+if WORKLOAD_NAME not in _WORKLOAD_TABLE:
+    raise SystemExit(f"Unknown WORKLOAD_NAME '{WORKLOAD_NAME}'. Choices: {list(_WORKLOAD_TABLE)}")
+WORKLOAD = _WORKLOAD_TABLE[WORKLOAD_NAME]
 
 # Governor baseline = static max clocks (race-to-idle). Pinned only when label == governor.
 MAX_CORE, MAX_MEM = 2950, 9501
@@ -66,15 +89,17 @@ class PowerSampler(threading.Thread):
 
 
 def set_max_clocks():
-    subprocess.run(["nvidia-smi", "-lgc", f"{MAX_CORE},{MAX_CORE}"],
+    # "sudo" per-call (not the whole script under sudo) -- this machine's
+    # NOPASSWD sudoers rule is scoped to exactly /usr/bin/nvidia-smi.
+    subprocess.run(["sudo", "nvidia-smi", "-lgc", f"{MAX_CORE},{MAX_CORE}"],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["nvidia-smi", "-lmc", f"{MAX_MEM},{MAX_MEM}"],
+    subprocess.run(["sudo", "nvidia-smi", "-lmc", f"{MAX_MEM},{MAX_MEM}"],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def reset_clocks():
-    subprocess.run(["nvidia-smi", "-rgc"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["nvidia-smi", "-rmc"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["sudo", "nvidia-smi", "-rgc"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["sudo", "nvidia-smi", "-rmc"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def main():
@@ -123,7 +148,11 @@ def main():
     gpu_root = os.path.abspath(os.path.join(script_dir, ".."))
     data_dir = os.path.join(gpu_root, "data")
     os.makedirs(data_dir, exist_ok=True)
-    out_csv = os.path.join(data_dir, f"power_{LABEL}.csv")
+    # nw keeps the original bare filename (power_governor.csv / power_ai.csv)
+    # so the already-validated nw result and its plot aren't clobbered by a
+    # run against a different workload.
+    suffix = "" if WORKLOAD_NAME == "nw" else f"_{WORKLOAD_NAME}"
+    out_csv = os.path.join(data_dir, f"power_{LABEL}{suffix}.csv")
 
     with open(out_csv, "w", newline="") as f:
         w = csv.writer(f)

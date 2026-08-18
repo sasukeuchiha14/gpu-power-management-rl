@@ -5,17 +5,25 @@ import threading
 import pynvml
 import os
 
-# ONLY Run the broken benchmarks
-BENCHMARKS = [
-    # Running them in a loop of 20 iterations to force 2+ seconds duration
-    {"name": "lud", "path": "../lud/cuda/lud_cuda", "args": ["-s", "8192"], "category": 0, "loops": 10}, 
-    {"name": "nw", "path": "../nw/needle", "args": ["16384", "10"], "category": 1, "loops": 10},
-]
-
 script_dir = os.path.dirname(os.path.abspath(__file__))
 gpu_root = os.path.abspath(os.path.join(script_dir, ".."))
 data_dir = os.path.join(gpu_root, "data")
+benchmarks_dir = os.path.join(gpu_root, "benchmarks")
 os.makedirs(data_dir, exist_ok=True)
+
+def _bin(name):
+    return os.path.relpath(os.path.join(benchmarks_dir, name), script_dir)
+
+# ONLY Run the broken benchmarks
+BENCHMARKS = [
+    # Running them in a loop of 20 iterations to force 2+ seconds duration
+    {"name": "lud", "path": _bin("lud/lud_cuda"), "args": ["-s", "8192"], "category": 0, "loops": 10},
+    {"name": "nw", "path": _bin("nw/needle"), "args": ["16384", "10"], "category": 1, "loops": 10},
+]
+
+# Same grid as generate_8000_datasets.py so rows are directly mergeable/comparable
+CORE_FREQS = list(range(1000, 2951, 50))  # 40 values
+MEM_FREQS  = list(range(5001, 9502, 500)) # 10 values
 
 OUTPUT_CSV = os.path.join(data_dir, "rtx4500_fixed_part2.csv") # Save to NEW file in data dir
 

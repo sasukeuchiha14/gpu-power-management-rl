@@ -17,6 +17,11 @@ import pandas as pd
 
 NUMERIC_COLS = ["Core_F", "Mem_F", "Avg_Time_S", "Avg_Pwr_W", "Peak_T_C", "Avg_Util_PCT"]
 
+# Must match preprocess.py's DEAD_WORKLOADS -- these rows never really ran on the
+# GPU (see dvfs-triage A2), so their bogus min/max (e.g. hotspot's 0% util) must
+# not leak into the normalization ranges the live daemon uses.
+DEAD_WORKLOADS = ["hotspot", "heartwall", "cupy_fft"]
+
 def _resolve_paths():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     gpu_root = os.path.abspath(os.path.join(script_dir, ".."))
@@ -46,6 +51,10 @@ def main():
         raise FileNotFoundError("No raw dataset found for scaler extraction.")
     print(f"Reading normalization ranges from: {raw}")
     df = pd.read_csv(raw)
+    if "Workload_Name" in df.columns:
+        before = len(df)
+        df = df[~df["Workload_Name"].isin(DEAD_WORKLOADS)]
+        print(f"Excluded dead workloads {DEAD_WORKLOADS} from range calc: {before} -> {len(df)} rows.")
 
     ranges = {c: {"min": float(df[c].min()), "max": float(df[c].max())} for c in NUMERIC_COLS}
 
@@ -64,6 +73,15 @@ def main():
         print(f"  {c:<14} min={ranges[c]['min']:.3f}  max={ranges[c]['max']:.3f}")
     if order:
         print(f"  state vector length = {len(order)} features")
+
+    # Sanity check the file we just wrote matches the preprocessed feature count
+    # (this is the exact drift bug from dvfs-triage A4 -- catch it here, not silently).
+    if os.path.isfile(prep):
+        prep_cols = [c for c in pd.read_csv(prep, nrows=1).columns.tolist() if c not in ("EDP", "Reward")]
+        assert len(prep_cols) == len(order), (
+            f"Feature count mismatch: scaler wrote {len(order)} but preprocessed data has "
+            f"{len(prep_cols)}. Re-run preprocess.py before export_scaler.py."
+        )
 
 if __name__ == "__main__":
     main()
