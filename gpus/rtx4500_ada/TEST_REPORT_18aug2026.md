@@ -94,9 +94,10 @@ of regression, only the ones its live proxy can see quickly enough.
 This is `dvfs-triage` B6 (shelling out to `nvidia-smi` twice per tick costs
 10-30ms per spawn) plus the daemon's PyTorch inference running on CPU, not
 GPU — the base Python environment's CUDA is unavailable to torch here for
-the same driver-version-mismatch reason documented in `CLAUDE.md` (this
-daemon still launches via bare `python3`, unlike the data-collection scripts
-which were already repointed at the working `llm_gpu` env earlier today).
+the same driver-version-mismatch reason documented in the project status
+notes (this daemon still launches via bare `python3`, unlike the
+data-collection scripts which were already repointed at the working
+`llm_gpu` env earlier today).
 **Not fixed in this pass** — B6's proper fix (in-process
 `nvmlDeviceSetGpuLockedClocks` instead of shelling out) needs the whole
 daemon process to run with elevated privileges, and this machine's

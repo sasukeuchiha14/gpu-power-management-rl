@@ -50,8 +50,8 @@ if not os.path.exists(_PYTHON_GPU):
     _PYTHON_GPU = "python3"
 _ZS_DIR = os.path.join(_BENCH_DIR, "zero_shot_workloads")
 
-# Low-optimum workloads (real, verified running -- see dvfs-triage / CLAUDE.md
-# section 7). Edit/extend this table to target a different one via argv[3].
+# Low-optimum workloads (real, verified running -- see dvfs-triage and the
+# project status docs). Edit/extend this table to target a different one via argv[3].
 # IN_DATASET workloads were profiled and trained on; ZERO_SHOT ones were
 # never profiled or trained on -- the daemon must nearest-neighbour-guess
 # their identity from live telemetry (dvfs-triage B1). Keep the two lists
