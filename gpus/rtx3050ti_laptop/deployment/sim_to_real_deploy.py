@@ -29,7 +29,7 @@ def _resolve(subfolder, filename):
     return cand
 
 # ============================== CONFIG =======================================
-DRY_RUN = False             # True = observe only, never change clocks. FLIP TO FALSE TO ACTUATE.
+DRY_RUN = False             # False = actuate real clocks now. Set True to observe only. Does NOT default to observe-only.
 GPU_INDEX = 0
 LOOP_MS = 50               # control loop cadence (50ms budget)
 TEMP_LIMIT_C = 90          # hard thermal safety override for laptop (Layer 1, set to 90C)

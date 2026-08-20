@@ -1,4 +1,5 @@
 import os
+import sys
 import csv
 import matplotlib
 matplotlib.use("Agg")
@@ -26,14 +27,17 @@ def stats(t, p):
     return mean_p, energy
 
 def main():
-    gov_path = os.path.join(data_dir, "power_governor.csv")
-    ai_path = os.path.join(data_dir, "power_ai.csv")
+    workload = sys.argv[1] if len(sys.argv) > 1 else "pt_matmul"
+    suffix = "" if workload == "pt_matmul" else f"_{workload}"
+    gov_path = os.path.join(data_dir, f"power_governor{suffix}.csv")
+    ai_path = os.path.join(data_dir, f"power_ai{suffix}.csv")
 
     try:
         gt, gp = load(gov_path)
         at, ap = load(ai_path)
-    except FileNotFoundError:
-        print(f"Missing power files. Run measure_edp.py for both 'governor' and 'ai' first.")
+    except FileNotFoundError as e:
+        print(f"Missing file ({e.filename}). Run measure_edp.py for both 'governor' and "
+              f"'ai' against '{workload}' first.")
         return
 
     gmean, genergy = stats(gt, gp)
@@ -41,7 +45,7 @@ def main():
     p_save = (gmean - amean) / gmean * 100 if gmean else 0
     e_save = (genergy - aenergy) / genergy * 100 if genergy else 0
 
-    print("\n============  A/B COMPARISON (RTX 3050 Ti)  ============")
+    print(f"\n============  A/B COMPARISON (RTX 3050 Ti, {workload})  ============")
     print(f" Governor  : mean {gmean:5.1f} W | energy {genergy:8.1f} J")
     print(f" AI daemon : mean {amean:5.1f} W | energy {aenergy:8.1f} J")
     print(f" --> power saved  : {p_save:+.1f}%")
@@ -55,13 +59,13 @@ def main():
              label=f"DDQN AI daemon           mean {amean:.1f} W")
     plt.axhline(gmean, color="red", ls="--", lw=1, alpha=0.6)
     plt.axhline(amean, color="green", ls="--", lw=1, alpha=0.6)
-    plt.title(f"RTX 3050 Ti GPU Power: AI DVFS vs Max-Clock Governor | Energy Saved: {e_save:.1f}%")
+    plt.title(f"RTX 3050 Ti GPU Power: AI DVFS vs Max-Clock Governor ({workload}) | Energy Saved: {e_save:.1f}%")
     plt.xlabel("Time (s)")
     plt.ylabel("GPU Power (W) -- Lower is Better")
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    out_img = os.path.join(logs_plots_dir, "edp_comparison.png")
+    out_img = os.path.join(logs_plots_dir, f"edp_comparison{suffix}.png")
     plt.savefig(out_img, dpi=200)
     print(f"Saved {out_img}")
 

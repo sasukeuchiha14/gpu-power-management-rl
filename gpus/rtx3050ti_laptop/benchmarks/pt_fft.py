@@ -18,10 +18,16 @@ def run():
     for _ in range(2):
         torch.fft.fftn(A)
 
-    # Benchmark
+    # Benchmark. NOTE: at 15 iterations this workload's own measured Duration
+    # was only ~0.07-0.12s -- under 2-3 samples of the 20Hz (50ms) NVML
+    # profiler in generate_dataset.py, so the collected dataset showed ~0%
+    # GPU utilization (dead-workload pattern, same class of bug as
+    # dvfs-triage A2). 120 iterations brings it to the same measurable range
+    # as the other short benchmarks (pt_vector_add, pt_crypto_proxy, both
+    # ~0.4s) without changing the array size or VRAM footprint.
     torch.cuda.synchronize()
     start = time.time()
-    for _ in range(15):
+    for _ in range(120):
         torch.fft.fftn(A)
     torch.cuda.synchronize()
     duration = time.time() - start

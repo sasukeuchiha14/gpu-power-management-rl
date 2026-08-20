@@ -8,15 +8,35 @@ import pynvml
 
 LABEL = sys.argv[1] if len(sys.argv) > 1 else "run"
 N_ITERS = int(sys.argv[2]) if len(sys.argv) > 2 else 10
+WORKLOAD_NAME = sys.argv[3] if len(sys.argv) > 3 else os.environ.get("WORKLOAD_NAME", "pt_matmul")
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 gpu_root = os.path.abspath(os.path.join(script_dir, ".."))
 benchmarks_dir = os.path.join(gpu_root, "benchmarks")
+zs_dir = os.path.join(benchmarks_dir, "zero_shot_workloads")
 data_dir = os.path.join(gpu_root, "data")
 os.makedirs(data_dir, exist_ok=True)
 
-# Use PyTorch Matrix Multiplication as the real-time load
-WORKLOAD = [sys.executable, os.path.join(benchmarks_dir, "pt_matmul.py")]
+# Trained workloads (profiled and in the training set) + zero-shot ones
+# (never profiled or trained on -- see benchmarks/zero_shot_workloads/).
+# Edit/extend this table to target a different one via argv[3].
+IN_DATASET_WORKLOADS = {
+    "pt_resnet50", "pt_bert", "pt_mobilenet", "pt_matmul", "pt_fft",
+    "pt_vector_add", "pt_elementwise", "pt_resnet50_train",
+    "pt_crypto_proxy", "pt_lstm",
+}
+ZERO_SHOT_WORKLOADS = {"pt_vit", "pt_squeezenet", "pt_sort_reduce"}
+
+if WORKLOAD_NAME in ZERO_SHOT_WORKLOADS:
+    _script = os.path.join(zs_dir, f"{WORKLOAD_NAME}.py")
+elif WORKLOAD_NAME in IN_DATASET_WORKLOADS:
+    _script = os.path.join(benchmarks_dir, f"{WORKLOAD_NAME}.py")
+else:
+    raise SystemExit(
+        f"Unknown WORKLOAD_NAME '{WORKLOAD_NAME}'. Choices: "
+        f"{sorted(IN_DATASET_WORKLOADS | ZERO_SHOT_WORKLOADS)}"
+    )
+WORKLOAD = [sys.executable, _script]
 
 MAX_CORE = 1900
 GPU_INDEX = 0
@@ -92,7 +112,10 @@ def main():
     t_per_iter = wall / N_ITERS
     edp_iter = mean_p * t_per_iter * t_per_iter
 
-    out_csv = os.path.join(data_dir, f"power_{LABEL}.csv")
+    # pt_matmul keeps the original bare filename (power_governor.csv /
+    # power_ai.csv) so the existing default result isn't clobbered.
+    suffix = "" if WORKLOAD_NAME == "pt_matmul" else f"_{WORKLOAD_NAME}"
+    out_csv = os.path.join(data_dir, f"power_{LABEL}{suffix}.csv")
     with open(out_csv, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["t_s", "power_W", "core_MHz", "mem_MHz"])

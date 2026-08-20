@@ -13,16 +13,24 @@ BENCHMARKS = [
     # --- Category 0: Compute-Bound ---
     {"name": "pt_resnet50", "script": "benchmarks/pt_resnet50.py", "category": 0},
     {"name": "pt_bert", "script": "benchmarks/pt_bert.py", "category": 0},
-    
+    {"name": "pt_mobilenet", "script": "benchmarks/pt_mobilenet.py", "category": 0},
+
     # --- Category 1: Memory-Bound ---
     {"name": "pt_matmul", "script": "benchmarks/pt_matmul.py", "category": 1},
     {"name": "pt_fft", "script": "benchmarks/pt_fft.py", "category": 1},
     {"name": "pt_vector_add", "script": "benchmarks/pt_vector_add.py", "category": 1},
-    
+    {"name": "pt_elementwise", "script": "benchmarks/pt_elementwise.py", "category": 1},
+
     # --- Category 2: Mixed ---
     {"name": "pt_resnet50_train", "script": "benchmarks/pt_resnet50_train.py", "category": 2},
     {"name": "pt_crypto_proxy", "script": "benchmarks/pt_crypto_proxy.py", "category": 2},
+    {"name": "pt_lstm", "script": "benchmarks/pt_lstm.py", "category": 2},
 ]
+# 18 Aug 2026 additions: pt_mobilenet (lighter CNN family than resnet50,
+# depthwise-separable convs), pt_elementwise (memory-bandwidth-bound,
+# distinct from matmul/fft/vector_add), pt_lstm (the only recurrent /
+# non-feedforward workload in the set -- stresses a different part of the
+# power curve than everything else here). 7 -> 10 trained workloads.
 
 # =================================================================
 # 2. LAPTOP CORE FREQUENCY GRID (Mem Clock remains stock 5871 MHz)
