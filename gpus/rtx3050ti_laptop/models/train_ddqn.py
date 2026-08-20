@@ -12,7 +12,6 @@ def _get_weights_path(filename="ddqn_weights.pth"):
     return os.path.join(weights_dir, filename)
 
 def train_agent(episodes=800):
-    # Ensure correct working directory context if launched via scripting
     env = LaptopDVFSEnv(dataset_path="preprocessed_dataset.csv")
     input_shape = env.observation_space.shape
     action_size = env.action_space.n

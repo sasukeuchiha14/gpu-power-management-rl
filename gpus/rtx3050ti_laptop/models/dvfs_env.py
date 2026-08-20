@@ -16,22 +16,37 @@ def _resolve_path(path):
     return path
 
 class LaptopDVFSEnv(gym.Env):
-    """Gymnasium Environment for Core-only DVFS Scaling on RTX 3050 Ti Laptop"""
-    
+    """
+    Universal 6-Feature DVFS Gym Environment for RTX 3050 Ti Laptop GPU.
+    State: 6 device-normalised features x 3 frame stack = (3, 6) matrix.
+    Actions: 3 discrete choices (0: Dec Core, 1: Inc Core, 2: Hold).
+    """
     def __init__(self, dataset_path="preprocessed_dataset.csv", stack_size=3):
         super(LaptopDVFSEnv, self).__init__()
         
         resolved_path = _resolve_path(dataset_path)
-        if not os.path.exists(resolved_path):
-            raise FileNotFoundError(f"Processed dataset {dataset_path} not found. Please run preprocess.py first.")
-            
         self.df = pd.read_csv(resolved_path)
-        self.state_cols = [col for col in self.df.columns if col not in ['EDP', 'Reward']]
-        self.workload_cols = [col for col in self.df.columns if col.startswith('Workload_Name_')]
         
-        # Action space: Discrete(3) -> 0: Decrease Core, 1: Increase Core, 2: Hold
+        # 6 Universal Device-Normalised Features (Fixed across all GPUs)
+        self.state_cols = [
+            'core_frac',
+            'sm_util',
+            'mem_util',
+            'power_frac',
+            'temp_frac',
+            'vram_frac'
+        ]
+        # Ensure any missing feature exists in dataframe
+        for col in self.state_cols:
+            if col not in self.df.columns:
+                self.df[col] = 0.0
+
+        self.workloads = self.df['Workload_Name'].unique().tolist()
+        
+        # Action space: 0 = Dec Core, 1 = Inc Core, 2 = Hold
         self.action_space = spaces.Discrete(3)
         
+        # Frame Stacking: (stack_size, 6 features)
         self.num_features = len(self.state_cols)
         self.stack_size = stack_size
         self.observation_space = spaces.Box(
@@ -41,69 +56,64 @@ class LaptopDVFSEnv(gym.Env):
         )
         
         self.current_step = 0
-        self.max_steps = 100 
+        self.max_steps = 50
         self.frames = deque(maxlen=self.stack_size)
-        
+        self.current_workload_df = None
+        self.current_state_row = None
+        self.current_tracked_core = 1.0 # Current core fraction
+
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.current_step = 0
+        self.frames.clear()
         
-        random_workload = np.random.choice(self.workload_cols)
-        self.current_workload_df = self.df[self.df[random_workload] == 1.0].copy()
+        # Pick a random workload for this training episode
+        random_workload = np.random.choice(self.workloads)
+        self.current_workload_df = self.df[self.df['Workload_Name'] == random_workload].copy()
+        
+        # Start at a random frequency state within this workload
         self.current_state_row = self.current_workload_df.sample(1).iloc[0]
-
-        self.current_tracked_core = self.current_state_row['Core_F']
+        self.current_tracked_core = float(self.current_state_row['core_frac'])
         
-        state = self._get_single_observation()
+        # Pre-fill frame stack
+        single_obs = self._get_single_observation()
         for _ in range(self.stack_size):
-            self.frames.append(state)
+            self.frames.append(single_obs)
             
         return self._get_stacked_observation(), {}
 
     def step(self, action):
         self.current_step += 1
         
-        curr_core = self.current_tracked_core
-        core_step_size = 0.10 # 10% frequency jump (coarse steps)
+        # Core clock delta stride (~100 MHz step in normalised scale)
+        # 100 MHz / 1400 MHz range ≈ 0.0714
+        stride = 100.0 / 1400.0
         
-        if action == 0:
-            curr_core = max(0.0, curr_core - core_step_size)
-        elif action == 1:
-            curr_core = min(1.0, curr_core + core_step_size)
-        # action 2 is hold
-        
-        self.current_tracked_core = curr_core
-        
-        # Calculate distance to snap to the nearest profiled Core frequency
-        distances = np.abs(self.current_workload_df['Core_F'] - curr_core)
-        self.current_state_row = self.current_workload_df.loc[distances.idxmin()]
-        
-        self.frames.append(self._get_single_observation())
-        
-        reward = self.current_state_row['Reward']
-        if action != 2: # Penalize unnecessary frequency shifts (action 2 = hold)
-            reward -= 0.02
+        if action == 0:   # Decrease Core Clock
+            self.current_tracked_core = max(0.0, self.current_tracked_core - stride)
+        elif action == 1: # Increase Core Clock
+            self.current_tracked_core = min(1.0, self.current_tracked_core + stride)
+        # action == 2: Hold (no change)
 
+        # Nearest-neighbour lookup for the closest physical state in this workload table
+        distances = np.abs(self.current_workload_df['core_frac'] - self.current_tracked_core)
+        best_match_idx = distances.idxmin()
+        self.current_state_row = self.current_workload_df.loc[best_match_idx]
+        
+        # Update frame stack with new observation + small telemetry sensor noise
+        single_obs = self._get_single_observation()
+        noise = np.random.normal(0, 0.01, size=single_obs.shape).astype(np.float32)
+        noisy_obs = np.clip(single_obs + noise, 0.0, 1.0)
+        self.frames.append(noisy_obs)
+        
+        reward = float(self.current_state_row['Reward'])
         terminated = False
         truncated = self.current_step >= self.max_steps
         
         return self._get_stacked_observation(), reward, terminated, truncated, {}
 
     def _get_single_observation(self):
-        raw_state = self.current_state_row[self.state_cols].values.astype(np.float32)
-        
-        # Domain Randomization: Inject +/- 1% artificial noise to simulate live sensors
-        noise = np.random.normal(0, 0.01, size=raw_state.shape)
-        noisy_state = np.clip(raw_state + noise, 0.0, 1.0)
-        
-        return noisy_state.astype(np.float32)
+        return self.current_state_row[self.state_cols].values.astype(np.float32)
 
     def _get_stacked_observation(self):
         return np.array(self.frames, dtype=np.float32)
-
-if __name__ == "__main__":
-    env = LaptopDVFSEnv(dataset_path="preprocessed_dataset.csv")
-    obs, info = env.reset()
-    print("Environment Initialized!")
-    print(f"Initial State Shape: {obs.shape}")
-    print(f"Action Space Size: {env.action_space.n}")

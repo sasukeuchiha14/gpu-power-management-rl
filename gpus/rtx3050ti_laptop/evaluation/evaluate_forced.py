@@ -43,14 +43,15 @@ def evaluate_and_plot_forced():
     state, _ = env.reset()
     worst_state_idx = env.current_workload_df['EDP'].idxmax()
     env.current_state_row = env.current_workload_df.loc[worst_state_idx]
-    env.current_tracked_core = env.current_state_row['Core_F']
+    env.current_tracked_core = float(env.current_state_row['core_frac'])
     
     single_obs = env._get_single_observation()
     for _ in range(env.stack_size):
         env.frames.append(single_obs)
     state = env._get_stacked_observation()
     
-    print(f"Forced starting state to WORST possible EDP on RTX 3050 Ti.")
+    wl_name = env.current_state_row['Workload_Name']
+    print(f"Forced starting state to WORST possible EDP for workload '{wl_name}'.")
     
     history_core = []
     history_edp = []
@@ -60,8 +61,13 @@ def evaluate_and_plot_forced():
         action = agent.act(state)
         next_state, reward, terminated, truncated, _ = env.step(action)
         
-        # Denormalize core frequency (500 to 1900 MHz)
-        history_core.append(env.current_state_row['Core_F'] * 1400 + 500) 
+        # Core frequency (MHz)
+        if 'Core_F' in env.current_state_row:
+            core_val = env.current_state_row['Core_F']
+        else:
+            core_val = env.current_state_row['core_frac'] * 1900.0
+            
+        history_core.append(core_val) 
         history_edp.append(1.0 - reward)
         
         state = next_state
@@ -72,7 +78,7 @@ def evaluate_and_plot_forced():
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
     
     ax1.plot(history_core, label="Core Frequency (MHz)", color='blue', linewidth=2, marker='o')
-    ax1.set_title("RTX 3050 Ti: AI Dynamically Tuning Core Clock for Efficiency")
+    ax1.set_title(f"RTX 3050 Ti: AI Dynamically Tuning Core Clock ({wl_name})")
     ax1.set_ylabel("Frequency (MHz)")
     ax1.legend()
     ax1.grid(True, linestyle='--', alpha=0.7)

@@ -31,7 +31,7 @@ def force_start(env, workload_df, start_row):
     env.current_step = 0
     env.current_workload_df = workload_df
     env.current_state_row = start_row
-    env.current_tracked_core = float(start_row['Core_F'])
+    env.current_tracked_core = float(start_row['core_frac'])
     env.frames.clear()
     single = env._get_single_observation()
     for _ in range(env.stack_size):
@@ -98,11 +98,10 @@ def evaluate():
 
     env.reset()
     if TARGET_WORKLOAD is not None:
-        env.current_workload_df = env.df[env.df[TARGET_WORKLOAD] == 1.0].copy()
+        env.current_workload_df = env.df[env.df['Workload_Name'] == TARGET_WORKLOAD].copy()
     workload_df = env.current_workload_df.copy()
     start_row = workload_df.sample(1, random_state=SEED).iloc[0]
-    active = [c for c in env.workload_cols if start_row[c] == 1.0]
-    wl_name = active[0].replace("Workload_Name_", "") if active else "unknown"
+    wl_name = str(start_row['Workload_Name'])
     print(f"Evaluating RTX 3050 Ti Laptop on workload '{wl_name}' from an identical start state.\n")
 
     gov = run_governor(env, workload_df, start_row, STEPS)

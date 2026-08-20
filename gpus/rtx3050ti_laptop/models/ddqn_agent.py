@@ -22,7 +22,7 @@ class QNetwork(nn.Module):
         return self.fc(x)
 
 class DDQNAgent:
-    """Double Deep Q-Network Agent (Core Clock Only)"""
+    """Double Deep Q-Network Agent (Universal 3-Action Core DVFS Controller)"""
     def __init__(self, input_shape, action_size):
         self.action_size = action_size
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

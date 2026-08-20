@@ -9,7 +9,7 @@ This directory contains a customized version of the RL DVFS controller framework
 * **GPU Target:** NVIDIA GeForce RTX 3050 Ti Laptop GPU.
 * **Operating System:** Windows 11 Home / Pro.
 * **Memory Constraints:** Optimized for low free RAM (uses standalone Python subprocesses for memory isolation).
-* **Thermal Protection:** Cooldown loop (<60°C check) and a 5-second heat-dissipation pause between iterations.
+* **Thermal Protection:** Cooldown loop (<70°C check) and a 5-second heat-dissipation pause between iterations.
 * **Control Dimension:** 1D Core Clock Scaling ($500\text{ MHz} \rightarrow 1900\text{ MHz}$ in 100 MHz steps, 15 discrete levels). Memory clock is fixed at stock 3D speed ($5871\text{ MHz}$) as consumer laptop VRAM frequency locking is driver-restricted.
 
 ---
@@ -22,7 +22,7 @@ This directory contains a customized version of the RL DVFS controller framework
 * `preprocessing/`: Preprocessor (`preprocess.py`) and scaler exporter (`export_scaler.py`).
 * `models/`: 1D Core-tuning Gym environment (`dvfs_env.py`), DDQN architecture (`ddqn_agent.py`), and training loop (`train_ddqn.py`).
 * `weights/`: Trained PyTorch network weights (`ddqn_weights.pth`).
-* `deployment/`: Real-time Windows deployment daemon (`sim_to_real_deploy.py`) with Administrator privilege checking and 80°C thermal safety override.
+* `deployment/`: Real-time Windows deployment daemon (`sim_to_real_deploy.py`) with Administrator privilege checking and 90°C thermal safety override.
 * `evaluation/`: Model performance visualizer (`evaluate_baselines.py`, `evaluate_forced.py`) and live A/B hardware power measurement tools (`measure_edp.py`, `plot_edp.py`).
 * `logs_and_plots/`: Generated evaluation graphs (`rtx3050ti_proof_graph.png`, `rtx3050ti_waterfall_graph.png`, `edp_comparison.png`).
 

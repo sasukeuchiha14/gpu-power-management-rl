@@ -7,7 +7,7 @@ import os
 import sys
 
 # =================================================================
-# 1. THE WORKLOADS (Pure Python equivalents running as separate processes)
+# 1. THE WORKLOADS (Pure PyTorch equivalents running as separate processes)
 # =================================================================
 BENCHMARKS = [
     # --- Category 0: Compute-Bound ---
@@ -27,13 +27,16 @@ BENCHMARKS = [
 # =================================================================
 # 2. LAPTOP CORE FREQUENCY GRID (Mem Clock remains stock 5871 MHz)
 # =================================================================
+CORE_FREQS = list(range(500, 1901, 100))  # 15 levels: 500, 600, ..., 1900 MHz
+FIXED_MEM_FREQ = 5871                     # Stock 3D memory clock (MHz)
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 gpu_root = os.path.abspath(os.path.join(script_dir, ".."))
 data_dir = os.path.join(gpu_root, "data")
 os.makedirs(data_dir, exist_ok=True)
 
 OUTPUT_CSV = os.path.join(data_dir, "rtx3050ti_dataset.csv")
-COOLDOWN_TEMP_C = 60  # Set to 60C for thermal safety and faster iteration on cleaned laptop
+COOLDOWN_TEMP_C = 70  # Cooldown threshold to avoid thermal throttling (set to 70C)
 
 def _resolve_benchmark_script(rel_script):
     cand1 = os.path.join(gpu_root, rel_script)
@@ -53,17 +56,27 @@ class GPUProfiler(threading.Thread):
         pynvml.nvmlInit()
         self.handle = pynvml.nvmlDeviceGetHandleByIndex(index)
         self.running = True
-        self.samples = {"pwr": [], "temp": [], "util": []}
+        self.samples = {
+            "pwr": [],
+            "temp": [],
+            "gpu_util": [],
+            "mem_util": [],
+            "vram_used": []
+        }
 
     def run(self):
         while self.running:
             try:
                 pwr = pynvml.nvmlDeviceGetPowerUsage(self.handle) / 1000.0
                 tmp = pynvml.nvmlDeviceGetTemperature(self.handle, pynvml.NVML_TEMPERATURE_GPU)
-                utl = pynvml.nvmlDeviceGetUtilizationRates(self.handle).gpu
+                utl_rates = pynvml.nvmlDeviceGetUtilizationRates(self.handle)
+                mem_info = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
+                
                 self.samples["pwr"].append(pwr)
                 self.samples["temp"].append(tmp)
-                self.samples["util"].append(utl)
+                self.samples["gpu_util"].append(utl_rates.gpu)
+                self.samples["mem_util"].append(utl_rates.memory)
+                self.samples["vram_used"].append(mem_info.used / (1024.0 * 1024.0)) # in MB
             except pynvml.NVMLError:
                 pass
             time.sleep(0.05)
@@ -73,11 +86,13 @@ class GPUProfiler(threading.Thread):
 
     def get_stats(self):
         if not self.samples["pwr"]:
-            return 0.0, 0, 0.0
+            return 0.0, 0, 0.0, 0.0, 0.0
         avg_p = sum(self.samples["pwr"]) / len(self.samples["pwr"])
         max_t = max(self.samples["temp"])
-        avg_u = sum(self.samples["util"]) / len(self.samples["util"])
-        return avg_p, max_t, avg_u
+        avg_gu = sum(self.samples["gpu_util"]) / len(self.samples["gpu_util"])
+        avg_mu = sum(self.samples["mem_util"]) / len(self.samples["mem_util"])
+        avg_vram = sum(self.samples["vram_used"]) / len(self.samples["vram_used"])
+        return avg_p, max_t, avg_gu, avg_mu, avg_vram
 
 # =================================================================
 # 4. MAIN PROFILER LOOP
@@ -95,18 +110,19 @@ def main():
     print("WARNING: Make sure you ran this terminal as Administrator!")
     print("=================================================================\n")
 
-    # Initialize NVML to query temperature for cooldown checking
     pynvml.nvmlInit()
     nvml_handle = pynvml.nvmlDeviceGetHandleByIndex(0)
 
-    file_exists = os.path.isfile(OUTPUT_CSV)
-    
-    try:
-        with open(OUTPUT_CSV, mode='a', newline='') as f:
-            writer = csv.writer(f)
-            if not file_exists:
-                writer.writerow(["Workload_Name", "Workload_Type", "Core_F", "Mem_F", "Avg_Time_S", "Avg_Pwr_W", "Peak_T_C", "Avg_Util_PCT", "EDP"])
+    # Overwrite cleanly for reproducible dataset
+    with open(OUTPUT_CSV, mode='w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "Workload_Name", "Workload_Type", "Core_F", "Mem_F", 
+            "Avg_Time_S", "Avg_Pwr_W", "Peak_T_C", 
+            "Avg_GPU_Util", "Avg_Mem_Util", "VRAM_Used_MB", "EDP"
+        ])
 
+        try:
             for bench in BENCHMARKS:
                 resolved_script = _resolve_benchmark_script(bench['script'])
                 print(f"\n>>> Running Workload: {bench['name']} ({resolved_script})")
@@ -116,7 +132,7 @@ def main():
                     continue
 
                 for cf in CORE_FREQS:
-                    # 1. COOLDOWN LOOP (Prevents thermal throttling noise)
+                    # 1. COOLDOWN LOOP
                     print(f"  Checking GPU Temperature...")
                     while True:
                         temp = pynvml.nvmlDeviceGetTemperature(nvml_handle, pynvml.NVML_TEMPERATURE_GPU)
@@ -135,10 +151,16 @@ def main():
                         sys.exit(1)
 
                     # 3. WARMUP + 3 BENCHMARK RUNS
-                    run_data = {"times": [], "pwrs": [], "utils": [], "temps": []}
+                    run_data = {
+                        "times": [], 
+                        "pwrs": [], 
+                        "gpu_utils": [], 
+                        "mem_utils": [], 
+                        "temps": [], 
+                        "vram": []
+                    }
                     
                     for run_idx in range(4): # 0 = Warmup, 1-3 = Benchmark
-                        # Explicit cooling pause before runs to prevent heat build-up
                         if run_idx > 0:
                             print(f"    Cooling pause for 5 seconds...", end="\r")
                             time.sleep(5)
@@ -149,10 +171,11 @@ def main():
                         monitor = GPUProfiler(index=0)
                         monitor.start()
                         
-                        start_time = time.time()
-                        # Run workload as a separate process to guarantee memory reclamation
-                        bench_res = subprocess.run([sys.executable, resolved_script], capture_output=True, text=True)
-                        dur = time.time() - start_time
+                        bench_res = subprocess.run(
+                            [sys.executable, resolved_script], 
+                            capture_output=True, 
+                            text=True
+                        )
                         
                         monitor.stop()
                         monitor.join()
@@ -161,19 +184,37 @@ def main():
                             print(f"    [WARNING] Workload exited with error: {bench_res.stderr.strip()}")
                             continue
 
-                        if run_idx > 0: # Record only the benchmarking runs
-                            pwr, temp_peak, util = monitor.get_stats()
+                        # Parse GPU kernel execution duration directly from stdout (Fix for Issue A1)
+                        dur = None
+                        for line in bench_res.stdout.splitlines():
+                            if "Duration:" in line:
+                                try:
+                                    dur = float(line.split("Duration:")[1].strip())
+                                    break
+                                except ValueError:
+                                    pass
+
+                        if dur is None or dur <= 0:
+                            print(f"    [WARNING] Failed to parse duration! Output: {bench_res.stdout.strip()}")
+                            continue
+
+                        if run_idx > 0: # Record only benchmarking runs
+                            pwr, temp_peak, gpu_u, mem_u, vram_mb = monitor.get_stats()
                             run_data["times"].append(dur)
                             run_data["pwrs"].append(pwr)
+                            run_data["gpu_utils"].append(gpu_u)
+                            run_data["mem_utils"].append(mem_u)
                             run_data["temps"].append(temp_peak)
-                            run_data["utils"].append(util)
+                            run_data["vram"].append(vram_mb)
 
                     # 4. AVERAGE DATA AND RECORD
                     if len(run_data["times"]) > 0:
                         avg_time = sum(run_data["times"]) / len(run_data["times"])
                         avg_pwr = sum(run_data["pwrs"]) / len(run_data["pwrs"])
-                        avg_util = sum(run_data["utils"]) / len(run_data["utils"])
+                        avg_gpu_u = sum(run_data["gpu_utils"]) / len(run_data["gpu_utils"])
+                        avg_mem_u = sum(run_data["mem_utils"]) / len(run_data["mem_utils"])
                         peak_temp = max(run_data["temps"])
+                        avg_vram = sum(run_data["vram"]) / len(run_data["vram"])
                         edp = (avg_pwr * avg_time) * avg_time
 
                         writer.writerow([
@@ -184,22 +225,23 @@ def main():
                             f"{avg_time:.4f}", 
                             f"{avg_pwr:.2f}", 
                             peak_temp, 
-                            f"{avg_util:.2f}", 
+                            f"{avg_gpu_u:.2f}", 
+                            f"{avg_mem_u:.2f}",
+                            f"{avg_vram:.2f}",
                             f"{edp:.6f}"
                         ])
                         f.flush()
                         
-                        print(f"  [RESULT] Core: {cf} MHz | Avg Time: {avg_time:.3f}s | Avg Pwr: {avg_pwr:.2f}W | Peak Temp: {peak_temp}C | EDP: {edp:.4f}")
+                        print(f"  [RESULT] Core: {cf}MHz | GPU Dur: {avg_time:.4f}s | Pwr: {avg_pwr:.1f}W | GPU-Util: {avg_gpu_u:.1f}% | Mem-Util: {avg_mem_u:.1f}% | EDP: {edp:.4f}")
 
-    finally:
-        # ALWAYS RESET CLOCKS TO AUTOMATIC
-        print("\nCleaning up: resetting GPU clocks to factory defaults...")
-        subprocess.run(["nvidia-smi", "-i", "0", "-rgc"], stdout=subprocess.DEVNULL)
-        try:
-            pynvml.nvmlShutdown()
-        except Exception:
-            pass
-        print("GPU auto-scaling restored. Cleanup complete.")
+        finally:
+            print("\nCleaning up: resetting GPU clocks to factory defaults...")
+            subprocess.run(["nvidia-smi", "-i", "0", "-rgc"], stdout=subprocess.DEVNULL)
+            try:
+                pynvml.nvmlShutdown()
+            except Exception:
+                pass
+            print("GPU auto-scaling restored. Cleanup complete.")
 
 if __name__ == "__main__":
     main()
