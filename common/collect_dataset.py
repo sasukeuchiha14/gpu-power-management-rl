@@ -39,6 +39,7 @@ if _script_dir not in sys.path:
     sys.path.insert(0, _script_dir)
 from gpu_probe import (  # noqa: E402
     hardware_limits, supported_clocks, _smi, _get_persistence_mode, _set_persistence_mode,
+    _read_gpu_field,
 )
 
 _repo_root = os.path.abspath(os.path.join(_script_dir, ".."))
@@ -186,9 +187,22 @@ def main():
         names = {w["name"] for w in WORKLOADS}
     workloads = [w for w in WORKLOADS if w["name"] in names]
 
+    unmatched = names - {w["name"] for w in WORKLOADS}
+    if unmatched:
+        print(f"WARNING: --workloads named {sorted(unmatched)}, which don't match any "
+              f"known workload. Check for typos. Known names: {[w['name'] for w in WORKLOADS]}")
+    if not workloads:
+        sys.exit("No workloads selected -- nothing to do. Check --workloads for typos.")
+
     out_dir = os.path.join(_repo_root, "gpus", slug, "data")
     os.makedirs(out_dir, exist_ok=True)
-    output_csv = args.output or os.path.join(out_dir, f"{slug}_dataset.csv")
+    # --quick writes to a clearly separate file so a sanity-check run can
+    # never silently mix its rows into the real dataset -- especially since
+    # both use the same _build_core_sweep() over the same range, some core
+    # levels will likely coincide between the two, which would otherwise
+    # produce literal duplicate rows if they shared one file.
+    default_name = f"{slug}_quicktest.csv" if args.quick else f"{slug}_dataset.csv"
+    output_csv = args.output or os.path.join(out_dir, default_name)
 
     total_points = len(workloads) * len(core_levels) * len(mem_levels)
     print("=" * 70)
@@ -223,18 +237,49 @@ def main():
 
                 for mf in mem_levels:
                     for cf in core_levels:
-                        while True:
+                        # Cooldown wait is capped -- on a hot host or with a
+                        # threshold that's slightly wrong for this card, an
+                        # uncapped wait would hang forever on a paid rental
+                        # with no indication anything's wrong.
+                        cooldown_attempts = 0
+                        while cooldown_attempts < 60:  # up to 2 minutes
                             temp = pynvml.nvmlDeviceGetTemperature(h, pynvml.NVML_TEMPERATURE_GPU)
                             if temp < args.cooldown_temp:
                                 break
                             print(f"    cooling ({temp}C > {args.cooldown_temp}C)...", end="\r")
                             time.sleep(2)
+                            cooldown_attempts += 1
+                        else:
+                            print(f"    [WARN] still above {args.cooldown_temp}C after 2 min "
+                                  f"-- proceeding anyway rather than hanging.")
 
                         core_ok, _ = _smi("-i", "0", "-lgc", f"{cf},{cf}")
                         mem_ok, _ = _smi("-i", "0", "-lmc", f"{mf},{mf}")
                         if not (core_ok and mem_ok):
                             skipped.append((bench["name"], cf, mf))
-                            print(f"    [SKIP] core={cf} mem={mf}: lock failed")
+                            print(f"    [SKIP] core={cf} mem={mf}: lock command rejected")
+                            continue
+
+                        # Verify the ACHIEVED clocks actually match what we
+                        # asked for. supported_clocks() only enumerates core
+                        # clocks valid at the TOP memory state (see its
+                        # docstring), so a core level we picked isn't
+                        # guaranteed jointly valid with every memory level we
+                        # also try it at -- the driver can silently coerce to
+                        # a different, jointly-valid combination while still
+                        # reporting success. Same lesson as the persistence
+                        # mode bug: trust the reading, not the message.
+                        achieved_core = _read_gpu_field("clocks.current.sm")
+                        achieved_mem = _read_gpu_field("clocks.current.memory")
+                        core_tol = max(50.0, cf * 0.1)
+                        mem_tol = max(100.0, mf * 0.05)
+                        if (achieved_core is None or achieved_mem is None
+                                or abs(achieved_core - cf) > core_tol
+                                or abs(achieved_mem - mf) > mem_tol):
+                            skipped.append((bench["name"], cf, mf))
+                            print(f"    [SKIP] core={cf} mem={mf}: achieved "
+                                  f"core={achieved_core} mem={achieved_mem} -- not a "
+                                  f"jointly valid combination, would have recorded the wrong label")
                             continue
 
                         run_data = {"times": [], "pwrs": [], "gpu_utils": [],
@@ -242,8 +287,18 @@ def main():
                         for run_idx in range(args.runs_per_point):
                             monitor = GPUProfiler(h)
                             monitor.start()
-                            res = subprocess.run([sys.executable, bench["script"]],
-                                                 capture_output=True, text=True)
+                            try:
+                                # A hung workload (real risk for the 2 new,
+                                # never-yet-run-on-hardware scripts) must not
+                                # be able to freeze the whole paid rental
+                                # indefinitely.
+                                res = subprocess.run([sys.executable, bench["script"]],
+                                                     capture_output=True, text=True, timeout=120)
+                            except subprocess.TimeoutExpired:
+                                monitor.stop()
+                                monitor.join()
+                                print(f"    [SKIP] {bench['name']} timed out after 120s")
+                                continue
                             monitor.stop()
                             monitor.join()
 
@@ -254,6 +309,7 @@ def main():
                                 if "Duration:" in line:
                                     try:
                                         dur = float(line.split("Duration:")[1].strip())
+                                        break
                                     except ValueError:
                                         pass
                             if dur is None or dur <= 0:
