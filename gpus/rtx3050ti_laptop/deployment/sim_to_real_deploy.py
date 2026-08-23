@@ -30,7 +30,9 @@ def _resolve(subfolder, filename):
     return cand
 
 # ============================== CONFIG =======================================
-DRY_RUN = False             # False = actuate real clocks now. Set True to observe only. Does NOT default to observe-only.
+DRY_RUN = True              # True = observe only, no real clock changes. Set False only after watching a
+                             # DRY_RUN session's logs look sane -- see CONTRIBUTING.md. The Layer 2 arbiter
+                             # added 25 Aug 2026 has only been tested against a mocked GPU, never live.
 GPU_INDEX = 0
 LOOP_MS = 50               # control loop cadence (50ms budget)
 TEMP_LIMIT_C = 90          # hard thermal safety override for laptop (Layer 1, set to 90C)
