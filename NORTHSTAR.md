@@ -37,12 +37,12 @@ Re-check these nine rows regularly. This **is** the results section of the paper
 | 1 | One architecture across every GPU | 🟡 Half | 3050 Ti runs the 6-feature device-normalized state. RTX 4500 still runs 28 features with a workload one-hot. Must converge on `common/features.py`. |
 | 2 | Runtime measured correctly everywhere | 🟡 Half | 3050 Ti now parses GPU-only duration — fixed the physics, produced a real compute-vs-bandwidth gradient. The 4500 collector still times the whole subprocess. |
 | 3 | Four or more in-scope GPUs profiled | 🔴 Blocked | Product targets 3000/4000 consumer cards. Exactly **one** is profiled (3050 Ti). The 4500 is a professional card, out of scope for the product. Depends on renting cards. |
-| 4 | Held-out GPU generalization (leave-one-GPU-out) | 🔴 Not started | The core scientific claim. Cannot start until row 3 is done. Nothing has been run. |
+| 4 | Held-out GPU generalization (leave-one-GPU-out) | 🟡 Tooling ready, no result yet | The core scientific claim. `common/train_unified.py --holdout <gpu>` now exists and is verified working end-to-end — but there's only one 6-feature dataset in the repo, so it has nothing to hold anything out *from* yet. Still blocked on row 3. |
 | 5 | Held-out workload generalization | 🟡 Redo | Done on the 4500, but under the old one-hot architecture (unseen app gets a borrowed identity via nearest-neighbor match). Must be redone under the 6-feature design. 3050 Ti zero-shot workloads are written but untested. |
 | 6 | No unacceptable slowdown | 🔴 Failing | 2 of 6 live workloads lost energy outright because runtime grew 14–15% while power fell only 12%. Users notice stutter, not watts. Needs an explicit bound and a guard that enforces it. |
 | 7 | Safety net actually present and working | 🔴 Regressed | The 3050 Ti rewrite **deleted** the do-no-harm arbiter — only the config constants remain, unread by any code. On the 4500 the arbiter exists but didn't trip on either regression. README still advertises it. |
 | 8 | Latency and overhead within budget | 🔴 Failing | Measured 70–90 ms mean vs a 50 ms budget; ~80% of a CPU core and ~750 MB RSS vs <1% / <50 MB targets. Root cause: subprocess spawns + CPU-only inference. 3050 Ti already has the in-process NVML fix. |
-| 9 | Reproducible training evidence | 🟡 Gap | Reward history is still discarded at the end of training. No saved curves, no seed control, no multi-seed runs. |
+| 9 | Reproducible training evidence | 🟡 Partial | Reward-history curves are now saved by both `train_ddqn.py` and `train_unified.py`, and `--seed` exists on the unified trainer. Still missing: multi-seed runs and error bars — nobody's run more than one seed yet. |
 
 **Legend:** 🟢 Done and verified · 🟡 Partial / needs rework · 🔴 Blocked or failing
 

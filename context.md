@@ -25,21 +25,39 @@ SSH connection line (`ssh -p <port> root@<ip>`). Once given: connect, clone this
 **before** doing anything further on that box (explicit agreement — first touch on any
 rented machine is probe-then-check-in, never probe-then-immediately-profile).
 
-**Before renting for a REAL profiling session (not just the probe), fix these first** —
-found in a full-repo review on 23 Aug, see that session log entry for detail:
-1. `gpus/rtx3050ti_laptop/data_collection/generate_dataset.py` — `CORE_FREQS` is
-   hardcoded to this laptop's 500-1900 MHz range, and one out-of-range frequency calls
-   `sys.exit(1)`, killing the whole sweep. Must read the card's real supported range at
-   runtime (like `gpu_probe.py` already does) before running this on any other card.
-2. `gpus/rtx3050ti_laptop/models/dvfs_env.py` line ~90 — `stride = 100.0 / 1400.0` bakes
-   in this card's exact clock span. Silently wrong on a card with a different range.
-3. **No code anywhere combines multiple GPUs' datasets into one training run.**
-   `train_ddqn.py` loads exactly one `preprocessed_dataset.csv`. This has to exist before
-   "leave-one-GPU-out" can mean anything — rent 4 cards today and there's still nothing to
-   train a unified model with.
-4. No `requirements.txt` — only `pynvml` is needed for the probe itself, but the full
-   pipeline needs torch/gymnasium/pandas/scikit-learn too. Have this ready before a paid
-   session stalls on it.
+**The 4 items below (found in the 23 Aug full-repo review) are now FIXED — safe to profile
+a new card for real.** Kept here so a fresh session doesn't waste time re-finding them:
+1. ✅ `generate_dataset.py` now derives its core-clock sweep from the connected card's real
+   NVML-reported range (reuses `gpu_probe.py`'s enumeration), falls back to the original
+   literal list only if that fails, and skips (doesn't `sys.exit`) a single bad lock.
+   Output filename is GPU-name-derived so different cards can't collide. Verified live on
+   the GTX 1650 (correctly got its real 300-1740 MHz range) and confirmed the exact
+   original filename/behavior is preserved when it detects the actual 3050 Ti.
+2. ✅ `dvfs_env.py`'s action stride is now inferred from the loaded data's own frequency
+   spacing instead of a hardcoded `100/1400`. Bonus finding: the old hardcoded value was
+   ~50% too large even on the original 3050 Ti, because the real scaler normalizes
+   against `max_core_mhz=2100` (this card's true boost clock) not 1400 — so the shipped
+   laptop policy was trained with a bigger action step than intended, independent of any
+   portability concern.
+3. ✅ **Multi-GPU training now exists.** `common/unified_env.py` (discovers every
+   `gpus/*/data/preprocessed_dataset.csv` matching the 6-feature schema, skips
+   incompatible ones like the RTX 4500's, samples across all of them per episode) +
+   `common/train_unified.py --holdout <gpu>` (leave-one-GPU-out). Verified end-to-end:
+   discovery, the holdout-excludes-only-dataset edge case (raises cleanly), and a real
+   15-episode training run producing correctly-shaped weights + a saved reward curve.
+   **Still can't produce an actual holdout RESULT** — there's only one compatible dataset
+   in the repo, so there's nothing to hold anything out from yet. That's still gated on
+   getting more GPUs profiled (scorecard row 3).
+4. ✅ `requirements.txt` added at repo root (torch, torchvision, gymnasium, pandas, numpy,
+   matplotlib, transformers, nvidia-ml-py).
+
+Also fixed in passing: `train_ddqn.py` (single-GPU trainer) now saves its reward-history
+curve too, closing part of NORTHSTAR.md scorecard row 9.
+
+**Renting alternatives were checked, not assumed:** TensorDock and RunPod are real
+SSH/VM alternatives to vast.ai at similar or slightly higher prices; Salad was ruled out
+despite its low price — it's a container-orchestration platform with no real SSH access,
+wrong model for our interactive workflow. Staying with vast.ai.
 
 ## Working agreements from the user (don't relitigate these)
 
@@ -90,12 +108,24 @@ found in a full-repo review on 23 Aug, see that session log entry for detail:
   `unified-model` branch. Verified remote-GPU-access plan is technically sound before the
   user spends money renting anything.
 - **23 Aug 2026 (same day, follow-up)** — Full re-read of every file before the first
-  rental, at the user's request. Found the 4 items listed above under "before renting for
-  a real session." Also found + fixed 2 more bugs in `gpu_probe.py` itself: it would
-  crash uncaught if a container has no GPU visible at all (real failure mode on
-  misconfigured rentals), and the USABLE/MARGINAL verdict could be wrongly downgraded by
-  a clock-enumeration call failing independently of whether locking actually worked.
-  Both fixed, re-verified live on the GTX 1650 (still correctly reports UNUSABLE without
-  root), committed and pushed (`0e3adff`). Confirmed the RTX 4500 tree's issues
-  (uncaught `sudo` subprocess crashes, hardcoded personal-machine path with a working
-  fallback) don't affect the rental plan since that tree is out of scope for it.
+  rental, at the user's request. Found the 4 items now listed as FIXED above. Also found
+  + fixed 2 more bugs in `gpu_probe.py` itself: it would crash uncaught if a container
+  has no GPU visible at all (real failure mode on misconfigured rentals), and the
+  USABLE/MARGINAL verdict could be wrongly downgraded by a clock-enumeration call failing
+  independently of whether locking actually worked. Both fixed, re-verified live on the
+  GTX 1650 (still correctly reports UNUSABLE without root), committed and pushed
+  (`0e3adff`). Confirmed the RTX 4500 tree's issues (uncaught `sudo` subprocess crashes,
+  hardcoded personal-machine path with a working fallback) don't affect the rental plan
+  since that tree is out of scope for it.
+- **23 Aug 2026 (same day, second follow-up)** — Gave rental instructions (vast.ai
+  step-by-step) and checked alternatives via live web search rather than memory (see
+  above). Then fixed all 4 "before renting for real" items: generalized the collector's
+  clock sweep and made the fatal exit non-fatal, fixed the env's hardcoded action stride
+  (and found it was wrong even on the original hardware — see above), built
+  `common/unified_env.py` + `common/train_unified.py` for multi-GPU / leave-one-GPU-out
+  training, added `requirements.txt`, and added reward-history saving to the existing
+  single-GPU trainer. Everything was actually run and verified (used a throwaway venv on
+  this sandbox with torch/gymnasium/nvidia-ml-py installed), not just read for
+  plausibility — including a real 15-episode training run through the full cross-tree
+  import path. Committed as `727deef` and `ac2da98`, pushed. Updated NORTHSTAR.md rows 4
+  and 9 and republished the artifact to match.
