@@ -44,3 +44,4 @@ env/
 .idea/
 .DS_Store
 *.swp
+common/gpu_capability.json
