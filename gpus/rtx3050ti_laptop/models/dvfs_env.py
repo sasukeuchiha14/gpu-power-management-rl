@@ -15,6 +15,21 @@ def _resolve_path(path):
         return cand
     return path
 
+def _infer_core_stride(workload_df):
+    """One action's core-clock step, in normalised core_frac units.
+
+    Was previously a literal `100.0 / 1400.0`, baking in this exact laptop's
+    500-1900 MHz (1400 MHz span) sweep -- silently wrong for any other card's
+    data (dvfs-triage). Instead, read the actual spacing between the
+    frequency levels this workload was profiled at: the median gap between
+    adjacent distinct core_frac values. Correct automatically for whatever
+    card produced the loaded dataset, with no card-specific constant.
+    """
+    levels = np.sort(workload_df['core_frac'].unique())
+    if len(levels) < 2:
+        return 0.1  # degenerate/single-level data -- arbitrary safe default
+    return float(np.median(np.diff(levels)))
+
 class LaptopDVFSEnv(gym.Env):
     """
     Universal 6-Feature DVFS Gym Environment for RTX 3050 Ti Laptop GPU.
@@ -61,6 +76,7 @@ class LaptopDVFSEnv(gym.Env):
         self.current_workload_df = None
         self.current_state_row = None
         self.current_tracked_core = 1.0 # Current core fraction
+        self.core_stride = 0.1  # placeholder; recomputed per-episode in reset()
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -74,6 +90,7 @@ class LaptopDVFSEnv(gym.Env):
         # Start at a random frequency state within this workload
         self.current_state_row = self.current_workload_df.sample(1).iloc[0]
         self.current_tracked_core = float(self.current_state_row['core_frac'])
+        self.core_stride = _infer_core_stride(self.current_workload_df)
         
         # Pre-fill frame stack
         single_obs = self._get_single_observation()
@@ -85,10 +102,8 @@ class LaptopDVFSEnv(gym.Env):
     def step(self, action):
         self.current_step += 1
         
-        # Core clock delta stride (~100 MHz step in normalised scale)
-        # 100 MHz / 1400 MHz range ≈ 0.0714
-        stride = 100.0 / 1400.0
-        
+        stride = self.core_stride
+
         if action == 0:   # Decrease Core Clock
             self.current_tracked_core = max(0.0, self.current_tracked_core - stride)
         elif action == 1: # Increase Core Clock
