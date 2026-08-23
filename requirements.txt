@@ -1,0 +1,22 @@
+# Full pipeline dependencies -- profiling, preprocessing, training, evaluation.
+# Only nvidia-ml-py is needed for common/gpu_probe.py alone.
+#
+# On a rented GPU box: pick a template with CUDA + PyTorch already installed
+# if one's offered (saves a slow from-scratch CUDA wheel download), then run
+#   pip install -r requirements.txt
+# to fill in the rest.
+
+torch
+torchvision
+gymnasium
+numpy
+pandas
+matplotlib
+
+# NLP benchmark workload (benchmarks/pt_bert.py)
+transformers
+
+# GPU telemetry + clock control. This is the modern NVIDIA-maintained
+# package; despite the different name it provides the `pynvml` module every
+# script in this repo imports.
+nvidia-ml-py

@@ -58,7 +58,12 @@ def train_agent(episodes=800):
     weights_out = _get_weights_path("ddqn_weights.pth")
     print("\nTraining Complete! Saving policy weights...")
     torch.save(agent.policy_net.state_dict(), weights_out)
+
+    history_out = weights_out.replace(".pth", "_reward_history.npy")
+    np.save(history_out, np.array(reward_history))
+
     print(f"Saved as '{weights_out}'. Ready for deployment!")
+    print(f"Saved training curve to '{history_out}'.")
 
 if __name__ == "__main__":
     train_agent()
