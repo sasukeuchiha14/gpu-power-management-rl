@@ -7,3 +7,4 @@ NVIDIA GeForce RTX 3060,575.51.03,linux,"{""max_core_mhz"": 2100.0, ""max_mem_mh
 NVIDIA GeForce RTX 3090,580.95.05,linux,"{""max_core_mhz"": 2130.0, ""max_mem_mhz"": 9751.0, ""power_limit_w"": 390.0, ""slowdown_temp_c"": 95.0, ""total_vram_mb"": 24576.0}",127,240,2130,5,True,True,True,True,True
 NVIDIA GeForce RTX 4090,580.95.05,linux,"{""max_core_mhz"": 3105.0, ""max_mem_mhz"": 10501.0, ""power_limit_w"": 450.0, ""slowdown_temp_c"": 99.0, ""total_vram_mb"": 24564.0}",194,210,3105,5,True,True,True,True,True
 NVIDIA GeForce RTX 3070,580.95.05,linux,"{""max_core_mhz"": 2100.0, ""max_mem_mhz"": 7001.0, ""power_limit_w"": 240.0, ""slowdown_temp_c"": 95.0, ""total_vram_mb"": 8192.0}",114,405,2100,5,True,True,True,True,True
+NVIDIA GeForce RTX 3080,580.95.05,linux,"{""max_core_mhz"": 2100.0, ""max_mem_mhz"": 9501.0, ""power_limit_w"": 320.0, ""slowdown_temp_c"": 95.0, ""total_vram_mb"": 10240.0}",127,210,2100,5,True,True,True,True,True
