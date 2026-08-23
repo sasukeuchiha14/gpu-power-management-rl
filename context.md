@@ -9,6 +9,88 @@ scorecard) → [CLAUDE.md](CLAUDE.md) (deep technical reference, only as needed)
 
 ---
 
+## IMMEDIATE NEXT STEP (as of 25 Aug, end of session): rent 4 GPUs in parallel
+
+User is renting these **4 GPUs simultaneously** right now and will paste in an SSH connect
+line for each as they come up. Run the full pipeline on all 4 **in parallel** (separate
+Bash calls per instance, don't serialize them) — the single-GPU pipeline is already fully
+proven (see the RTX 3060 section below), so there's no reason to do these one at a time.
+
+**The list (RTX 3060 is already done, not on this list):**
+1. **RTX 4070** — needs a **REDO**. It passed `gpu_probe.py` earlier this session but the
+   instance was reclaimed (interruptible) before `collect_dataset.py` ever ran on it — it
+   has NO dataset yet, only a capability-probe result in the fleet survey.
+2. **RTX 3090** (fallback: RTX 3080) — Ampere high-tier, new
+3. **RTX 4060** — Ada low-tier, new
+4. **RTX 4090** — Ada high-tier, new
+
+Together with the RTX 3060 already done, this reaches **5 desktop GPUs total** — the
+target agreed with the user for a real leave-one-GPU-out experiment.
+
+**Per-instance checklist (identical steps proven on the RTX 3060 this session):**
+1. Rent on vast.ai: **VM-type template** ("Ubuntu 22.04 CLI (VM)" or equivalent) — NEVER a
+   container-type template, those deny clock control entirely. Confirm before renting;
+   worth checking the template description says "full virtual machine," not "Docker
+   container."
+2. SSH key is already on the user's vast.ai account (added earlier this session), so it
+   should auto-provision on a fresh instance. Public key, if ever needed again:
+   `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL1ysIECFf0E+PSKu/sycVadq0CKEuJmQxyMpxcEtYsg govindaraj2k5@gmail.com`
+3. Test the SSH connection, confirm it's a genuine VM (hostname `ubuntu`, not a
+   container-ID-looking string; check `uname -a` for a real kernel).
+4. Set up the remote directory and copy files (mirror this exact structure, since
+   `collect_dataset.py`'s path logic depends on it):
+   ```
+   mkdir -p /workspace/repo/common/benchmarks /workspace/repo/gpus/rtx3050ti_laptop/benchmarks
+   ```
+   then scp `common/gpu_probe.py`, `common/collect_dataset.py`, `common/benchmarks/*.py`,
+   and `gpus/rtx3050ti_laptop/benchmarks/*.py` to the matching remote paths.
+5. `pip install --quiet nvidia-ml-py`, then run `python3 gpu_probe.py --survey
+   fleet_survey.csv` FIRST. Confirm `USABLE` before doing anything else on that instance.
+6. **Check the driver's actual supported CUDA version before installing torch** —
+   `nvidia-smi | head -5` shows it in the header. If it's CUDA 13.x, plain `pip install
+   torch` is fine. If it's CUDA 12.x, the default `pip install torch` will grab a CUDA-13
+   build that silently fails (`torch.cuda.is_available()` returns False) — this happened
+   for real on one RTX 3060 instance this session. Install from
+   `https://download.pytorch.org/whl/cu121` instead in that case.
+7. Also `pip install --quiet torchvision transformers` (needed by pt_resnet50, pt_bert,
+   pt_mobilenet, pt_resnet50_train — not needed for `--quick` alone, but needed for the
+   full run). Verify all imports work before launching the long run:
+   `python3 -c "import torch, torchvision, transformers; from torchvision.models import
+   resnet50; from transformers import BertModel"`.
+8. Run `python3 collect_dataset.py --quick` first (a few minutes) as a sanity check, THEN
+   the full run: `nohup python3 -u collect_dataset.py > /workspace/full_run.log 2>&1 &
+   disown` — note the `-u` (unbuffered, so the log is actually readable live) and `nohup`
+   (survives a dropped SSH session). The full run is ~288 points, roughly 2-3.5 hours
+   depending on the workload mix's speed on that card.
+9. Check in periodically (every ~20-25 min is reasonable) via `tail -30
+   /workspace/full_run.log`, `ps aux | grep collect_dataset`, `grep -c SKIP
+   /workspace/full_run.log`. With 4 running in parallel, cycle through checking each.
+10. **On completion, audit before trusting it** — don't just assume it's fine. Pull the CSV
+    back to `gpus/<gpu_slug>/data/`, then check: exact row count (should be 12 workloads x
+    core_levels x usable_mem_levels, mem levels are usually 3 but confirm from that card's
+    own `gpu_probe.py` output), zero duplicate (workload,core,mem) combos, EDP recomputes
+    correctly, all fields in sane ranges, per-workload trends make sense. **Specifically
+    check the file actually HAS a header row** — a real bug from this exact scenario
+    (killing and restarting a buffered launch mid-session) already happened once; the fix
+    is in `collect_dataset.py` now but double-check anyway, it's cheap.
+11. Commit each GPU's dataset as its own commit, update `common/fleet_survey/fleet_survey.csv`
+    if not already done via `--survey`, and add a scorecard-row-3 update in NORTHSTAR.md
+    noting the running total (X of 5+ desktop GPUs done).
+
+**On reclaim/interruption risk:** the RTX 4070 was lost this way earlier this session
+(interruptible instance, reclaimed while idle). Since these are long-running paid rentals
+(hours, in parallel, so real money), lean toward **On-Demand** for these unless the user
+says otherwise — confirmed this in the previous message but re-affirm before committing to
+4 hours-long rentals at once.
+
+**Known-good torch/CUDA state so far:** the RTX 3060 (driver 580.95.05, CUDA 13.0 capable)
+worked with plain `pip install torch`. An earlier different RTX 3060 (driver 575.51.03,
+also CUDA 13.0 per its `nvidia-smi` header) also worked with plain `pip install torch`.
+Only the FIRST torch install attempt (on the 575 driver, before checking `nvidia-smi`'s
+header first) grabbed a mismatched build — checking the header first avoids repeating this.
+
+---
+
 ## Where we are right now
 
 **Branch:** `unified-model` (all work happens here; `main` is teammates' committed work,
@@ -219,3 +301,19 @@ wrong model for our interactive workflow. Staying with vast.ai.
   plausibility — including a real 15-episode training run through the full cross-tree
   import path. Committed as `727deef` and `ac2da98`, pushed. Updated NORTHSTAR.md rows 4
   and 9 and republished the artifact to match.
+- **25 Aug 2026 (session end)** — Rented and probed 4 real GPU instances across the
+  session (2x RTX 3060, RTX 4070, and re-tests). Found and fixed 3 separate real bugs in
+  `gpu_probe.py`/`collect_dataset.py`: persistence-mode silent no-op, missing readback
+  verification, and a readback race condition (clocks take a variable, sometimes >1s,
+  amount of time to settle — fixed with a polling helper, `_wait_for_clock`, instead of a
+  fixed delay). Built `common/collect_dataset.py` (the 2D core+memory collector) and 2 new
+  workloads (`pt_sparse_gather`, `pt_transformer_decode`) grounded in a literature check,
+  not guessed. Ran the first-ever full 288-point collection on real hardware (RTX 3060):
+  succeeded, zero skipped points. Found and fixed one more bug during the audit (missing
+  CSV header row, caused by a killed-and-restarted process leaving a stub file behind; no
+  data was lost, confirmed by cross-referencing against the live log). Audited all 288 rows
+  across 6 dimensions, all passed. This is the first complete desktop-GPU dataset the
+  project has ever produced. Ending the session here because context is nearly full;
+  user is renting 4 more GPUs in parallel (RTX 4070 redo, 3090, 4060, 4090) for the next
+  session to run the same pipeline on, in parallel. See "IMMEDIATE NEXT STEP" at the top of
+  this file for the full per-instance checklist.
