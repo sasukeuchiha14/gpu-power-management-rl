@@ -42,10 +42,19 @@ it for desktop-only would break having one unified action space. That's a real d
 conversation to have with the user, not something to slip in unilaterally just because the
 data now supports it.
 
-**Currently running:** nothing. All prior rentals were interruptible and idle long enough
-to get reclaimed (confirmed directly, not assumed — see the outbid incident below). Waiting
-on the user to rent a fresh instance for the actual short test run
-(`collect_dataset.py --quick`), which has not yet succeeded even once.
+**The short test run finally succeeded (25 Aug, On-Demand instance after the outbid
+incident).** `collect_dataset.py --quick` completed cleanly: 18/18 points, zero skips,
+data verified physically coherent with real assertions (matmul speeds up with core clock
+as expected; vector_add barely responds to core but shows a real ~30% slowdown at the
+lowest memory clock -- the first data this project has ever collected showing memory-clock
+sensitivity, impossible on the laptop-only pipeline). Saved as
+`gpus/nvidia_geforce_rtx_3060/data/nvidia_geforce_rtx_3060_quicktest.csv`, committed.
+**Next: the real 288-point full run on this same instance** (still connected, was On-Demand
+so no reclaim risk) -- torch is already installed and working, nothing else to set up.
+
+**Currently running:** one On-Demand RTX 3060 instance (`ssh -p 61448 root@142.170.96.180`),
+torch installed and CUDA confirmed working. The quick test succeeded on it; the full
+288-point run is the immediate next step, on this same instance.
 
 **Built `common/collect_dataset.py` (25 Aug), the 2D core+memory data collector, plus 2 new
 workloads** (`common/benchmarks/pt_sparse_gather.py`, `pt_transformer_decode.py`, chosen
