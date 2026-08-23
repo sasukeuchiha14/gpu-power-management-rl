@@ -42,19 +42,38 @@ it for desktop-only would break having one unified action space. That's a real d
 conversation to have with the user, not something to slip in unilaterally just because the
 data now supports it.
 
-**The short test run finally succeeded (25 Aug, On-Demand instance after the outbid
-incident).** `collect_dataset.py --quick` completed cleanly: 18/18 points, zero skips,
-data verified physically coherent with real assertions (matmul speeds up with core clock
-as expected; vector_add barely responds to core but shows a real ~30% slowdown at the
-lowest memory clock -- the first data this project has ever collected showing memory-clock
-sensitivity, impossible on the laptop-only pipeline). Saved as
-`gpus/nvidia_geforce_rtx_3060/data/nvidia_geforce_rtx_3060_quicktest.csv`, committed.
-**Next: the real 288-point full run on this same instance** (still connected, was On-Demand
-so no reclaim risk) -- torch is already installed and working, nothing else to set up.
+**The full 288-point RTX 3060 dataset is DONE and fully audited (25 Aug).** Both the quick
+test (18 points) and the full run (288 points, 12 workloads x 8 core x 3 memory, zero
+skipped) completed successfully on the On-Demand instance. This is the first complete
+desktop-GPU dataset the project has ever produced, and the first real proof
+`collect_dataset.py` works end-to-end on live hardware, not just in local logic tests.
 
-**Currently running:** one On-Demand RTX 3060 instance (`ssh -p 61448 root@142.170.96.180`),
-torch installed and CUDA confirmed working. The quick test succeeded on it; the full
-288-point run is the immediate next step, on this same instance.
+**Found one more real bug during the full-run audit, root-caused and fixed:** the output
+file was missing its header row. Cause: an early *buffered* launch (killed and replaced
+with an unbuffered one, before the quick test) had already created a 0-byte stub file via
+`open(mode="a")`. The real run's `file_exists = os.path.isfile(...)` check saw that stub
+"existed" and skipped writing the header, so all 288 rows got appended under no header at
+all. **No data was lost** -- confirmed by matching the "malformed header" row's exact
+values against the live log from that data point. Fixed by prepending the correct header,
+and fixed the root cause in `collect_dataset.py` (file_exists now also requires non-empty).
+
+Ran a full 6-part audit across all 288 rows (not a sample): exact coverage (288 rows, 0
+duplicates, all 12 workloads x 24 rows each), EDP formula verified to 0.06% across every
+row, every field in sane physical range everywhere, per-workload trend sanity (one minor,
+explained non-monotonicity in pt_lstm from subprocess-overhead noise on its very short
+runtime, not a defect), cross-checked against the quicktest for reproducibility (timing
+matched to <0.5% in 11/12 comparisons), and both brand-new workloads behaved sensibly on
+their first-ever real-hardware run. Dataset and the header-bug fix are committed and pushed.
+
+**Next: rent 3+ more desktop GPUs** (target list agreed with the user: 3070/3080/3090 for
+Ampere high-tier, 4060 for Ada low-tier, 4090 for Ada high-tier) and run the same
+`collect_dataset.py` full sweep on each, to get enough GPUs for a real leave-one-GPU-out
+test. Consider running some of these in parallel once the single-GPU pipeline is this
+proven -- that was always the plan after one clean full run succeeded.
+
+**Currently running:** the RTX 3060 instance (`ssh -p 61448 root@142.170.96.180`) is still
+up with a complete, audited dataset on it (already pulled locally and committed) -- fine to
+destroy whenever, nothing more needed from it right now.
 
 **Built `common/collect_dataset.py` (25 Aug), the 2D core+memory data collector, plus 2 new
 workloads** (`common/benchmarks/pt_sparse_gather.py`, `pt_transformer_decode.py`, chosen
