@@ -25,6 +25,22 @@ SSH connection line (`ssh -p <port> root@<ip>`). Once given: connect, clone this
 **before** doing anything further on that box (explicit agreement — first touch on any
 rented machine is probe-then-check-in, never probe-then-immediately-profile).
 
+**Before renting for a REAL profiling session (not just the probe), fix these first** —
+found in a full-repo review on 23 Aug, see that session log entry for detail:
+1. `gpus/rtx3050ti_laptop/data_collection/generate_dataset.py` — `CORE_FREQS` is
+   hardcoded to this laptop's 500-1900 MHz range, and one out-of-range frequency calls
+   `sys.exit(1)`, killing the whole sweep. Must read the card's real supported range at
+   runtime (like `gpu_probe.py` already does) before running this on any other card.
+2. `gpus/rtx3050ti_laptop/models/dvfs_env.py` line ~90 — `stride = 100.0 / 1400.0` bakes
+   in this card's exact clock span. Silently wrong on a card with a different range.
+3. **No code anywhere combines multiple GPUs' datasets into one training run.**
+   `train_ddqn.py` loads exactly one `preprocessed_dataset.csv`. This has to exist before
+   "leave-one-GPU-out" can mean anything — rent 4 cards today and there's still nothing to
+   train a unified model with.
+4. No `requirements.txt` — only `pynvml` is needed for the probe itself, but the full
+   pipeline needs torch/gymnasium/pandas/scikit-learn too. Have this ready before a paid
+   session stalls on it.
+
 ## Working agreements from the user (don't relitigate these)
 
 - **Never push to `main`.** All commits go to `unified-model` unless told otherwise.
@@ -73,3 +89,13 @@ rented machine is probe-then-check-in, never probe-then-immediately-profile).
   some cards where the CLI still works). Set up this three-file doc structure. Created
   `unified-model` branch. Verified remote-GPU-access plan is technically sound before the
   user spends money renting anything.
+- **23 Aug 2026 (same day, follow-up)** — Full re-read of every file before the first
+  rental, at the user's request. Found the 4 items listed above under "before renting for
+  a real session." Also found + fixed 2 more bugs in `gpu_probe.py` itself: it would
+  crash uncaught if a container has no GPU visible at all (real failure mode on
+  misconfigured rentals), and the USABLE/MARGINAL verdict could be wrongly downgraded by
+  a clock-enumeration call failing independently of whether locking actually worked.
+  Both fixed, re-verified live on the GTX 1650 (still correctly reports UNUSABLE without
+  root), committed and pushed (`0e3adff`). Confirmed the RTX 4500 tree's issues
+  (uncaught `sudo` subprocess crashes, hardcoded personal-machine path with a working
+  fallback) don't affect the rental plan since that tree is out of scope for it.
