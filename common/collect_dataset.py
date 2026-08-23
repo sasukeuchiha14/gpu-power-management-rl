@@ -220,7 +220,13 @@ def main():
     _set_persistence_mode(True)  # -lmc/-pl silently no-op without this
 
     skipped = []
-    file_exists = os.path.isfile(output_csv)
+    # os.path.isfile() alone isn't enough: a killed/crashed prior run can
+    # leave a 0-byte stub file behind (opened in append mode, never got as
+    # far as flushing a header) -- happened for real on 25 Aug 2026 when an
+    # early buffered run was killed and restarted. The restart saw the stub
+    # file "exists", skipped writing the header, and appended 288 real data
+    # rows directly under no header at all. Checking size too catches this.
+    file_exists = os.path.isfile(output_csv) and os.path.getsize(output_csv) > 0
     try:
         with open(output_csv, mode="a", newline="") as f:
             writer = csv.writer(f)
