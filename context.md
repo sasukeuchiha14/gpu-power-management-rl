@@ -42,13 +42,50 @@ it for desktop-only would break having one unified action space. That's a real d
 conversation to have with the user, not something to slip in unilaterally just because the
 data now supports it.
 
-**Currently running:** two instances — the RTX 4070 VM (`ssh -p 25282 root@191.223.212.127`)
-and the fresh RTX 3060 VM (`ssh -p 61424 root@142.170.96.180`). Neither has had a real
-profiling run yet, both only probed. Ask the user what's next.
+**Currently running:** nothing. All prior rentals were interruptible and idle long enough
+to get reclaimed (confirmed directly, not assumed — see the outbid incident below). Waiting
+on the user to rent a fresh instance for the actual short test run
+(`collect_dataset.py --quick`), which has not yet succeeded even once.
+
+**Built `common/collect_dataset.py` (25 Aug), the 2D core+memory data collector, plus 2 new
+workloads** (`common/benchmarks/pt_sparse_gather.py`, `pt_transformer_decode.py`, chosen
+from a literature check, not guessed). User explicitly asked for a re-check before handing
+over SSH access -- found and fixed 6 real bugs on that pass, most importantly: the script
+never verified an achieved clock actually matched what it locked, same class of mistake as
+the persistence-mode bug. See git log on `common/collect_dataset.py` for full detail.
+
+**Then found and fixed a SECOND, subtler bug the same day, live on a rented RTX 3060:** the
+readback-verification fix above had a race condition -- reading a clock immediately after
+locking it can catch a stale pre-transition value (measured under 0.5s to settle on one run,
+over 1s on the very next run of the identical script on the same host). A single fixed delay
+can't reliably fix variable settling time. Replaced with `_wait_for_clock()` in
+`gpu_probe.py` -- polls every 0.5s for up to 4s instead of checking once -- used by all three
+gpu_probe.py tests AND imported into collect_dataset.py so both share one fix. Verified with
+4 repeated runs on the same host: 4/4 consistent after the fix (previously flaky).
+
+**Then hit two more real, unresolved things in sequence, on that same RTX 3060 rental:**
+1. The default `pip install torch` grabbed a CUDA-13-built wheel, but the host's driver only
+   supports up to CUDA 12.9 -- `torch.cuda.is_available()` was False, so `--quick` correctly
+   failed all 18 points (the FATAL-on-100%-skip check worked exactly as designed, no silent
+   bad data). Fix identified but not yet completed: install from
+   `https://download.pytorch.org/whl/cu121` instead of the default index.
+2. **The instance got outbid and reclaimed mid-fix** (confirmed directly by the user, not
+   inferred) -- "Connection refused," not a dropped session. This was an Interruptible
+   instance. The actual `--quick` short test run has **still never succeeded end to end** --
+   every attempt so far has been interrupted by something else (bugs found, or the rental
+   dying) before completing cleanly.
+
+**Next step:** rent again. Consider On-Demand this time given the reclaim just happened for
+real, not hypothetically -- ask the user. Once connected: install torch from the cu121 index
+FROM THE START (don't repeat the default-index mismatch), then finally get one clean
+`--quick` run to complete.
 
 **Last session activity:** 23–25 Aug 2026. Set up this doc structure, the shared
-`common/features.py` + `common/gpu_probe.py` modules, connected to and probed four real
-rented GPU instances, found and fully resolved the persistence-mode measurement bug above.
+`common/features.py` + `common/gpu_probe.py` modules, connected to and probed five real
+rented GPU instances across the session, found and fully resolved three separate real bugs
+(persistence-mode silent no-op, missing readback verification, and the readback race
+condition above) -- each found by the user pushing back or asking for a recheck, not by
+proactive review alone.
 
 **The 4 items below (found in the 23 Aug full-repo review) are now FIXED — safe to profile
 a new card for real.** Kept here so a fresh session doesn't waste time re-finding them:
