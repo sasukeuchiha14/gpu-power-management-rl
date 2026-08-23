@@ -9,7 +9,45 @@ scorecard) → [CLAUDE.md](CLAUDE.md) (deep technical reference, only as needed)
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 25 Aug, end of session): rent 4 GPUs in parallel
+## IMMEDIATE NEXT STEP (as of 24 Aug, end of session): run a real leave-one-GPU-out result
+
+**Row 3 of the scorecard is done — 8 GPUs profiled (1 laptop + 7 desktop), well past the
+4+ target.** This session rented 4 GPUs in parallel (RTX 3070, 3090, 3080, then a further
+2 — RTX 4070 Ti and RTX 4070 — as they came online), ran the full `collect_dataset.py`
+pipeline on each via 6 parallel background agents (one per box), audited every result
+against the same 7-check protocol as the RTX 3060 baseline, and committed each as its own
+commit once its audit passed clean:
+- `26ac06c` RTX 3090 — 288/288, 0 skips
+- `b29e3c4` RTX 4090 — 252/288 (36 skips, all the max-core-clock joint-lock ceiling, explained)
+- `ff697fe` RTX 3070 — 288/288, 0 skips
+- `1d0d4df` RTX 3080 — 288/288, 0 skips
+- `af18c04` RTX 4070 — 256/288 (32 skips, same max-clock ceiling pattern, explained)
+- `746003e` RTX 4070 Ti — 288/288, 0 skips
+
+Combined with the RTX 3060 from the prior session, that's **7 desktop GPUs across both
+Ampere and Ada generations**, plus the RTX 3050 Ti laptop — 8 total. `NORTHSTAR.md` row 3
+updated to 🟢.
+
+**Next real step: row 4 (leave-one-GPU-out).** `common/train_unified.py --holdout <gpu>`
+already exists and is verified working end-to-end — it was blocked only on having enough
+compatible datasets, which is now solved. Nobody has actually run a holdout training +
+evaluation yet. That's the next session's job: pick a held-out card (or run it for several
+different holdouts), train on the rest, evaluate on the held-out card's data, and report a
+real number. This is the core scientific claim of the paper — don't let it sit idle now
+that it's unblocked.
+
+Also worth doing, lower priority: merge `gpu_capability.json` probe snapshots and
+`fleet_survey.csv` rows are already committed per-card; no further probe work needed
+unless more GPUs get rented. The recurring `pip install torchvision transformers`
+silently upgrading torch to an incompatible cu130 build (seen on both RTX 4070 Ti and RTX
+4070 boxes this session, on top of the earlier RTX 3060 mismatch) suggests it may be worth
+pinning `torch==<version>+cu121` and `torchvision==<version>+cu121` together in
+`requirements.txt` explicitly for CUDA-12.x boxes rather than re-discovering this per
+rental — not urgent, but would save a repeated debugging step.
+
+---
+
+## COMPLETED (as of 25 Aug, prior session): rent 4 GPUs in parallel — superseded, see above
 
 User is renting these **4 GPUs simultaneously** right now and will paste in an SSH connect
 line for each as they come up. Run the full pipeline on all 4 **in parallel** (separate
