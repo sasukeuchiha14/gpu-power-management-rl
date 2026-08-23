@@ -19,6 +19,7 @@ if models_dir not in sys.path:
     sys.path.insert(0, models_dir)
 
 from ddqn_agent import DDQNAgent
+from arbiter import DoNoHarmArbiter
 
 def _resolve(subfolder, filename):
     cand = os.path.join(gpu_root, subfolder, filename)
@@ -36,10 +37,14 @@ TEMP_LIMIT_C = 90          # hard thermal safety override for laptop (Layer 1, s
 STACK_SIZE = 3             # matching environment stack size
 WEIGHTS = _resolve("weights", "ddqn_weights.pth")
 
-# Layer 2: do-no-harm performance arbiter.
+# Layer 2: do-no-harm performance arbiter. See arbiter.py's module docstring
+# for why this watches utilisation rather than reconstructing EDP the way
+# the old RTX 4500 arbiter did -- that approach needs workload-identifying
+# lookups this design deliberately removed.
 ARBITER_ENABLE = True
 ARB_PATIENCE = 3
 ARB_COOLDOWN = 5
+ARB_UTIL_THRESHOLD = 85.0   # % SM utilisation considered "compute-bound, at risk of real slowdown"
 
 CORE_MIN_MHZ = 500
 CORE_MAX_MHZ = 1900
@@ -93,8 +98,12 @@ class LiveController:
             print(f"[WARNING] Weights {WEIGHTS} not found. Running with UNTRAINED model.")
 
         self.current_core_mhz = CORE_MAX_MHZ
-        self.consecutive_bad = 0
-        self.cooldown_ticks = 0
+        self.arbiter = DoNoHarmArbiter(
+            util_threshold=ARB_UTIL_THRESHOLD,
+            patience=ARB_PATIENCE,
+            cooldown=ARB_COOLDOWN,
+            enabled=ARBITER_ENABLE,
+        )
 
         # Prime the frame stack with live sensor readings
         init_obs = self._read_telemetry()
@@ -173,24 +182,35 @@ class LiveController:
 
         # 4. Apply Action
         if action == 0:
-            target_core = self.current_core_mhz - CORE_STRIDE_MHZ
+            requested_core = self.current_core_mhz - CORE_STRIDE_MHZ
         elif action == 1:
-            target_core = self.current_core_mhz + CORE_STRIDE_MHZ
+            requested_core = self.current_core_mhz + CORE_STRIDE_MHZ
         else:
-            target_core = self.current_core_mhz
+            requested_core = self.current_core_mhz
+
+        # Layer 2: do-no-harm arbiter can override the policy's requested
+        # clock (see arbiter.py). Evaluated against the clock that was
+        # actually in effect going into this tick, before the policy's move.
+        target_core, arb_overridden, arb_tripped = self.arbiter.decide(
+            sm_util_pct=self.last_raw["gpu_util"],
+            tracked_core_mhz=self.current_core_mhz,
+            core_max_mhz=CORE_MAX_MHZ,
+            requested_core_mhz=requested_core,
+        )
 
         self.set_clocks(target_core)
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
 
         # 5. Log status
         mode_tag = "[DRY_RUN]" if DRY_RUN else "[LIVE]"
+        arb_tag = " [ARBITER TRIPPED]" if arb_tripped else (" [arbiter hold]" if arb_overridden else "")
         print(
             f"{mode_tag} Action: {action_names[action]:<8} | "
             f"Target Core: {self.current_core_mhz:4d} MHz | "
             f"Observed: {self.last_raw['core_mhz']:4.0f} MHz, {self.last_raw['power_w']:5.1f} W, "
             f"{self.last_raw['temp_c']:4.1f} C, GPU: {self.last_raw['gpu_util']:3.0f}%, "
             f"Mem-Busy: {self.last_raw['mem_util']:3.0f}% | "
-            f"Tick: {elapsed_ms:4.1f} ms"
+            f"Tick: {elapsed_ms:4.1f} ms{arb_tag}"
         )
 
 def main():
