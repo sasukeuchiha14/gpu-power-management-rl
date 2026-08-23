@@ -73,7 +73,7 @@ def _run_agent(env, agent, gpu_tag, workload_df, start_row, steps):
     return hist
 
 
-def evaluate(holdout_gpu, weights_path=None, steps=STEPS, seed=SEED):
+def evaluate(holdout_gpu, weights_path=None, steps=STEPS, seed=SEED, out_csv=None):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
@@ -135,9 +135,12 @@ def evaluate(holdout_gpu, weights_path=None, steps=STEPS, seed=SEED):
     print(f"(per-workload improvement_pct in the saved CSV is informative per-row but NOT meant "
           f"to be averaged -- see comment above)")
 
-    out_dir = os.path.join(_common_dir, "holdout_results")
-    os.makedirs(out_dir, exist_ok=True)
-    out_csv = os.path.join(out_dir, f"{holdout_gpu}.csv")
+    if out_csv is None:
+        out_dir = os.path.join(_common_dir, "holdout_results")
+        os.makedirs(out_dir, exist_ok=True)
+        out_csv = os.path.join(out_dir, f"{holdout_gpu}.csv")
+    else:
+        os.makedirs(os.path.dirname(os.path.abspath(out_csv)), exist_ok=True)
     results.to_csv(out_csv, index=False)
     print(f"\nSaved per-workload results -> {out_csv}")
     return results
@@ -148,9 +151,13 @@ def main():
     ap.add_argument("--holdout", required=True, help="GPU folder name, e.g. nvidia_geforce_rtx_4090")
     ap.add_argument("--weights", default=None)
     ap.add_argument("--steps", type=int, default=STEPS)
-    ap.add_argument("--seed", type=int, default=SEED)
+    ap.add_argument("--seed", type=int, default=SEED,
+                     help="seed for the fixed evaluation start-state per workload (NOT the "
+                          "training seed) -- kept fixed across a training-seed sweep so results "
+                          "are only comparing trained-policy quality, not eval start-state luck")
+    ap.add_argument("--out-csv", default=None, help="override the output CSV path")
     args = ap.parse_args()
-    evaluate(args.holdout, weights_path=args.weights, steps=args.steps, seed=args.seed)
+    evaluate(args.holdout, weights_path=args.weights, steps=args.steps, seed=args.seed, out_csv=args.out_csv)
 
 
 if __name__ == "__main__":
