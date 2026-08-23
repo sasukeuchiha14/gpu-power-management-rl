@@ -11,8 +11,24 @@ means the same physical thing on a 35W GTX 1650 and a 450W RTX 4090.
 
 Deliberately EXCLUDED:
   * workload one-hot  -> cannot exist for an app the model was not trained on
-  * Mem_F             -> consumer cards expose no usable memory-clock range
+  * Mem_F             -> kept core-only for now, but see NOTE below: this is a
+                         design choice, not a settled hardware fact
   * Avg_Time_S        -> not observable live for an unknown workload
+
+NOTE on Mem_F (23 Aug 2026): the original reasoning here was "consumer cards
+expose no usable memory-clock range," based on two MOBILE GeForce cards (GTX
+1650 Max-Q, RTX 3050 Ti Laptop) where `-lmc` was rejected by the driver
+itself. A rented desktop RTX 3060 on an unrestricted VM successfully locked
+memory clock, core clock, AND power limit -- all three -- while an identical
+RTX 3060 model on a Docker-container instance failed all three with
+"insufficient permission." See common/fleet_survey/fleet_survey.csv. So the
+real pattern (so far, n=3) looks like: mobile/laptop GeForce chips may
+genuinely lack memory-clock control at the driver level, but desktop GeForce
+chips might have it -- gated by container vs VM privilege, not by "consumer
+vs professional." Core-only is kept here because a fleet with inconsistent
+per-card action spaces breaks the "one unified model" goal, not because the
+capability doesn't exist. Revisit if more desktop-card data confirms the
+pattern -- see NORTHSTAR.md.
 """
 
 FEATURES = [

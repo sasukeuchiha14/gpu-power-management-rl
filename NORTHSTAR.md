@@ -36,7 +36,7 @@ Re-check these nine rows regularly. This **is** the results section of the paper
 |---|---|---|---|
 | 1 | One architecture across every GPU | 🟡 Half | 3050 Ti runs the 6-feature device-normalized state. RTX 4500 still runs 28 features with a workload one-hot. Must converge on `common/features.py`. |
 | 2 | Runtime measured correctly everywhere | 🟡 Half | 3050 Ti now parses GPU-only duration — fixed the physics, produced a real compute-vs-bandwidth gradient. The 4500 collector still times the whole subprocess. |
-| 3 | Four or more in-scope GPUs profiled | 🔴 Blocked | Product targets 3000/4000 consumer cards. Exactly **one** is profiled (3050 Ti). The 4500 is a professional card, out of scope for the product. Depends on renting cards. |
+| 3 | Four or more in-scope GPUs profiled | 🟡 Unblocked, none profiled yet | Product targets 3000/4000 consumer cards. Exactly **one** is profiled (3050 Ti). The path to more is now proven: a rented RTX 3060 on a VM-type vast.ai instance passed the capability probe fully (core, mem, and power control all work) — see "The one thing everything else depends on" below. Container-type instances fail; VM-type instances work. Next step is an actual profiling run on that instance, not just the probe. |
 | 4 | Held-out GPU generalization (leave-one-GPU-out) | 🟡 Tooling ready, no result yet | The core scientific claim. `common/train_unified.py --holdout <gpu>` now exists and is verified working end-to-end — but there's only one 6-feature dataset in the repo, so it has nothing to hold anything out *from* yet. Still blocked on row 3. |
 | 5 | Held-out workload generalization | 🟡 Redo | Done on the 4500, but under the old one-hot architecture (unseen app gets a borrowed identity via nearest-neighbor match). Must be redone under the 6-feature design. 3050 Ti zero-shot workloads are written but untested. |
 | 6 | No unacceptable slowdown | 🔴 Failing | 2 of 6 live workloads lost energy outright because runtime grew 14–15% while power fell only 12%. Users notice stutter, not watts. Needs an explicit bound and a guard that enforces it. |
@@ -98,33 +98,44 @@ the unified-model claim.
 
 ---
 
-## The one thing everything else depends on
+## The one thing everything else depends on — ANSWERED, 23 Aug 2026
 
-The plan to source 3000/4000 cards from vast.ai (or similar) carries an assumption that
-hasn't been tested end to end on a real rental yet: that a rented container is allowed to
-change GPU clocks at all. Rented instances are Docker containers, and clock control needs
-privileges the NVIDIA container runtime doesn't grant by default.
+The open question was whether a rented instance is even allowed to change GPU clocks at
+all. It's been tested for real now, on two vast.ai instances, same GPU model
+(RTX 3060), and the answer is **it depends entirely on container vs VM, not on the GPU
+or the marketplace**:
 
-Settle it for the price of a coffee before renting anything for a full profiling run: rent
-the cheapest 3000-series instance, run the probe.
+| Instance type | Core lock | Mem lock | Power limit | Verdict |
+|---|---|---|---|---|
+| Docker container (PyTorch template) | ✕ | ✕ | ✕ | UNUSABLE — "insufficient permission" on all three |
+| Full VM (Ubuntu 22.04 CLI template) | ✓ | ✓ | ✓ | USABLE — all three worked |
 
-```bash
-pip install nvidia-ml-py
-python3 common/gpu_probe.py --survey fleet_survey.csv
-```
+Full data in `common/fleet_survey/fleet_survey.csv`.
 
-It prints `USABLE` or `UNUSABLE` and writes a survey row. Do this on **two or three
-different hosts**, not one — permissions vary per host, so a single failure isn't proof
-the whole marketplace is closed.
+**Practical conclusion: always rent VM-type instances, not container-type ones, for
+profiling.** vast.ai (and presumably similar marketplaces) offer both; the template
+description usually says outright whether it's a container ("Docker container," lists
+"Container Limitations") or a VM ("full virtual machine," "no container limitations").
+Check that before renting for a real session — a container-type instance will very
+likely reproduce the same UNUSABLE result regardless of which GPU it has.
 
-- **If USABLE:** rent 4–6 cards spanning both generations, profile each with the unified
-  collector, get a genuine leave-one-GPU-out result. Bonus: different hosts have
-  different cooling, so thermal variation across rentals becomes real domain
-  randomization — stronger than the synthetic Gaussian noise currently injected during
-  training.
-- **If UNUSABLE:** fall back to physical cards immediately. Borrow 3000/4000-series
-  laptops from classmates — a full profiling run is 2–3 hours per card. Scope the paper
-  to cross-*architecture* transfer (Turing → Ampere → Ada) on the cards physically held.
+**Unexpected bonus finding, not yet fully explained:** the working VM instance locked
+*memory* clock and set the *power limit* too, not just core — on a desktop RTX 3060, a
+consumer card. The two physical mobile/laptop cards tested earlier this project (GTX
+1650 Max-Q, RTX 3050 Ti Laptop) both rejected memory-clock locking as a genuine driver
+limitation, not a permissions issue. Current best read with n=3: the earlier "consumer
+cards can't do memory clock" conclusion may have really been "*mobile* GeForce chips
+can't," and desktop GeForce chips might support the full 2D action space when nothing is
+blocking driver access. **This is not yet a decided design change** — `common/features.py`
+still deliberately excludes Mem_F, because a fleet where some cards support memory control
+and others don't breaks having one unified action space. Worth a real discussion once more
+desktop-card data exists, not a unilateral change based on one data point.
+
+Next: rent 4–6 **VM-type** instances spanning both generations, profile each with the
+unified collector, get a genuine leave-one-GPU-out result. Bonus: different hosts have
+different cooling, so thermal variation across rentals becomes real domain
+randomization — stronger than the synthetic Gaussian noise currently injected during
+training.
 
 Laptop GPUs aren't rentable at all — nobody puts a mobile chip in a datacenter. If laptop
 cards are to appear in the results table, they come from physical machines either way.
