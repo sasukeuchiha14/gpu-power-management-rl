@@ -39,7 +39,7 @@ if _script_dir not in sys.path:
     sys.path.insert(0, _script_dir)
 from gpu_probe import (  # noqa: E402
     hardware_limits, supported_clocks, _smi, _get_persistence_mode, _set_persistence_mode,
-    _read_gpu_field,
+    _read_gpu_field, _wait_for_clock,
 )
 
 _repo_root = os.path.abspath(os.path.join(_script_dir, ".."))
@@ -269,17 +269,26 @@ def main():
                         # a different, jointly-valid combination while still
                         # reporting success. Same lesson as the persistence
                         # mode bug: trust the reading, not the message.
-                        achieved_core = _read_gpu_field("clocks.current.sm")
-                        achieved_mem = _read_gpu_field("clocks.current.memory")
+                        #
+                        # Uses gpu_probe's polling helper rather than a
+                        # single fixed-delay check: empirically on a rented
+                        # RTX 3060 (25 Aug 2026), the identical lock command
+                        # took under 0.5s to settle on one run and over 1s on
+                        # the very next run -- no fixed delay was reliable,
+                        # and a false rejection here would wrongly skip a
+                        # perfectly good data point.
                         core_tol = max(50.0, cf * 0.1)
                         mem_tol = max(100.0, mf * 0.05)
-                        if (achieved_core is None or achieved_mem is None
-                                or abs(achieved_core - cf) > core_tol
-                                or abs(achieved_mem - mf) > mem_tol):
+                        achieved_core, core_matched = _wait_for_clock(
+                            "clocks.current.sm", cf, core_tol)
+                        achieved_mem, mem_matched = _wait_for_clock(
+                            "clocks.current.memory", mf, mem_tol)
+                        if not (core_matched and mem_matched):
                             skipped.append((bench["name"], cf, mf))
                             print(f"    [SKIP] core={cf} mem={mf}: achieved "
-                                  f"core={achieved_core} mem={achieved_mem} -- not a "
-                                  f"jointly valid combination, would have recorded the wrong label")
+                                  f"core={achieved_core} mem={achieved_mem} after retrying "
+                                  f"-- not a jointly valid combination, would have recorded "
+                                  f"the wrong label")
                             continue
 
                         run_data = {"times": [], "pwrs": [], "gpu_utils": [],

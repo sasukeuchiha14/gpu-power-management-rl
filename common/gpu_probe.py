@@ -16,7 +16,7 @@ Answers in ~60 seconds:
 SAFETY: every write test is wrapped so clocks are ALWAYS reset, including on
 exception or Ctrl+C. Nothing is left locked.
 """
-import argparse, csv, json, os, subprocess, sys
+import argparse, csv, json, os, subprocess, sys, time
 
 try:
     import pynvml
@@ -106,6 +106,25 @@ def _read_gpu_field(field):
         return None
 
 
+def _wait_for_clock(field, target, tolerance, max_wait=4.0, poll_interval=0.5):
+    """Poll `field` until it settles within `tolerance` of `target`, or give
+    up after max_wait seconds. Replaces a single fixed-delay readback:
+    empirically on one rented RTX 3060 (25 Aug 2026), the SAME lock command
+    took less than 0.5s to settle on one run and more than 1s on the very
+    next run of the identical script -- a fixed delay produced inconsistent
+    false negatives no single number could reliably fix. Polling tolerates
+    that variability directly. Returns (last_reading, matched)."""
+    achieved = None
+    waited = 0.0
+    while waited < max_wait:
+        time.sleep(poll_interval)
+        waited += poll_interval
+        achieved = _read_gpu_field(field)
+        if achieved is not None and abs(achieved - target) <= tolerance:
+            return achieved, True
+    return achieved, False
+
+
 def _get_persistence_mode():
     ok, out = _smi("--query-gpu=persistence_mode", "--format=csv,noheader")
     return out.strip().splitlines()[0].strip() if ok and out else "Unknown"
@@ -117,41 +136,48 @@ def _set_persistence_mode(enabled):
 
 def test_core_lock(h, limits):
     """Lock core to a mid-range value, verify the ACHIEVED clock actually
-    moved (not just that the command reported success), then always reset."""
+    moved (not just that the command reported success), then always reset.
+
+    Polls via _wait_for_clock rather than checking once after a fixed delay:
+    empirically on one rented RTX 3060 (25 Aug 2026), the SAME lock command
+    took under 0.5s to settle on one run and over 1s on the very next run of
+    the identical script -- no single fixed delay was reliable. A false NO
+    here means rejecting a host that actually works fine."""
     target = int(limits["max_core_mhz"] * 0.55)
     try:
         ok, msg = _smi("-i", "0", "-lgc", f"{target},{target}")
         if not ok:
             return False, _first_reason(msg)
-        achieved = _read_gpu_field("clocks.current.sm")
+        tolerance = max(50.0, target * 0.1)
+        achieved, matched = _wait_for_clock("clocks.current.sm", target, tolerance)
         if achieved is None:
             return False, "lock reported success but clock unreadable"
-        tolerance = max(50.0, target * 0.1)
-        if abs(achieved - target) > tolerance:
-            return False, f"reported success but clock reads {achieved:.0f} MHz, not ~{target} MHz -- likely a silent no-op"
+        if not matched:
+            return False, f"reported success but clock reads {achieved:.0f} MHz, not ~{target} MHz after retrying -- likely a silent no-op"
         return True, f"locked to {target} MHz (confirmed: {achieved:.0f} MHz)"
     finally:
         _smi("-i", "0", "-rgc")          # never leave the GPU locked
 
 
 def test_mem_lock(h, limits):
-    """Same verify-don't-trust approach as test_core_lock. This matters more
-    here: nvidia-smi -lmc reports success and prints the new target even when
-    persistence mode is off and the change silently never takes effect --
-    caught empirically on a rented RTX 4070 (23 Aug 2026). main() enables
-    persistence mode before calling this for exactly that reason; this
-    readback check is a second, independent line of defense."""
+    """Same verify-don't-trust, poll-don't-guess approach as test_core_lock.
+    Also matters here for a second reason: nvidia-smi -lmc reports success
+    and prints the new target even when persistence mode is off and the
+    change silently never takes effect -- caught empirically on a rented
+    RTX 4070 (23 Aug 2026). main() enables persistence mode before calling
+    this for exactly that reason; this readback check is a second,
+    independent line of defense."""
     target = int(limits["max_mem_mhz"])
     try:
         ok, msg = _smi("-i", "0", "-lmc", f"{target},{target}")
         if not ok:
             return False, _first_reason(msg)
-        achieved = _read_gpu_field("clocks.current.memory")
+        tolerance = max(50.0, target * 0.05)
+        achieved, matched = _wait_for_clock("clocks.current.memory", target, tolerance)
         if achieved is None:
             return False, "lock reported success but clock unreadable"
-        tolerance = max(50.0, target * 0.05)
-        if abs(achieved - target) > tolerance:
-            return False, f"reported success but clock reads {achieved:.0f} MHz, not ~{target} MHz -- likely a silent no-op (needs persistence mode)"
+        if not matched:
+            return False, f"reported success but clock reads {achieved:.0f} MHz, not ~{target} MHz after retrying -- likely a silent no-op (needs persistence mode)"
         return True, f"locked to {target} MHz (confirmed: {achieved:.0f} MHz)"
     finally:
         _smi("-i", "0", "-rmc")
@@ -168,11 +194,12 @@ def test_power_limit(h, limits):
         ok, msg = _smi("-i", "0", "-pl", str(target))
         if not ok:
             return False, _first_reason(msg)
-        achieved = _read_gpu_field("power.limit")
+        tolerance = max(2.0, target * 0.05)
+        achieved, matched = _wait_for_clock("power.limit", target, tolerance)
         if achieved is None:
             return False, "set reported success but limit unreadable"
-        if abs(achieved - target) > max(2.0, target * 0.05):
-            return False, f"reported success but limit reads {achieved:.0f} W, not ~{target} W -- likely a silent no-op (needs persistence mode)"
+        if not matched:
+            return False, f"reported success but limit reads {achieved:.0f} W, not ~{target} W after retrying -- likely a silent no-op (needs persistence mode)"
         return True, f"set to {target} W (confirmed: {achieved:.0f} W)"
     finally:
         _smi("-i", "0", "-pl", str(int(cur)))
