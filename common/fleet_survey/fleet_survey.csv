@@ -1,3 +1,4 @@
 gpu_name,driver,platform,hardware_limits,core_levels,core_min_mhz,core_max_mhz,memory_states,core_lock,mem_lock,power_limit,usable
 NVIDIA GeForce RTX 3060,570.195.03,linux,"{""max_core_mhz"": 2160.0, ""max_mem_mhz"": 7501.0, ""power_limit_w"": 170.0, ""slowdown_temp_c"": 95.0, ""total_vram_mb"": 12288.0}",235,405,2160,5,False,False,False,False
 NVIDIA GeForce RTX 3060,575.51.03,linux,"{""max_core_mhz"": 2100.0, ""max_mem_mhz"": 7501.0, ""power_limit_w"": 170.0, ""slowdown_temp_c"": 95.0, ""total_vram_mb"": 12288.0}",227,405,2100,5,True,True,True,True
+NVIDIA GeForce RTX 4070,580.95.05,linux,"{""max_core_mhz"": 3105.0, ""max_mem_mhz"": 10501.0, ""power_limit_w"": 200.0, ""slowdown_temp_c"": 94.0, ""total_vram_mb"": 12282.0}",194,210,3105,5,True,True,True,True

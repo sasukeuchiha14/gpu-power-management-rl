@@ -119,17 +119,25 @@ description usually says outright whether it's a container ("Docker container," 
 Check that before renting for a real session — a container-type instance will very
 likely reproduce the same UNUSABLE result regardless of which GPU it has.
 
-**Unexpected bonus finding, not yet fully explained:** the working VM instance locked
-*memory* clock and set the *power limit* too, not just core — on a desktop RTX 3060, a
-consumer card. The two physical mobile/laptop cards tested earlier this project (GTX
-1650 Max-Q, RTX 3050 Ti Laptop) both rejected memory-clock locking as a genuine driver
-limitation, not a permissions issue. Current best read with n=3: the earlier "consumer
-cards can't do memory clock" conclusion may have really been "*mobile* GeForce chips
-can't," and desktop GeForce chips might support the full 2D action space when nothing is
-blocking driver access. **This is not yet a decided design change** — `common/features.py`
-still deliberately excludes Mem_F, because a fleet where some cards support memory control
-and others don't breaks having one unified action space. Worth a real discussion once more
-desktop-card data exists, not a unilateral change based on one data point.
+**Bonus finding, now confirmed on a second card:** both working VM instances locked
+*memory* clock and set the *power limit* too, not just core — first a desktop RTX 3060
+(Ampere), then a desktop RTX 4070 (Ada, a different generation entirely) on 25 Aug. Both
+succeeded on all three controls. The two physical mobile/laptop cards tested earlier this
+project (GTX 1650 Max-Q, RTX 3050 Ti Laptop) both rejected memory-clock locking as a
+genuine driver limitation, not a permissions issue. Current read, n=4 (2 mobile: rejected,
+2 desktop across 2 generations: fully worked): the earlier "consumer cards can't do memory
+clock" conclusion looks like it was really "*mobile* GeForce chips can't," not a universal
+consumer-card limit. Interesting structural detail, consistent across both desktop cards:
+the memory P-states follow the same shape on both — two near-max 3D states close together,
+then a big drop to a 5001 MHz "compute" state, then 810 (video decode), then 405 (idle).
+
+**Still not yet a decided design change** — `common/features.py` still deliberately
+excludes Mem_F, because a fleet where some cards support memory control and others don't
+breaks having one unified action space. Two desktop cards agreeing is stronger evidence
+than one, but the mobile side of the comparison is still second-hand (the RTX 3050 Ti was
+never actually run through `gpu_probe.py`, only inferred from a README note) — that's the
+next gap worth closing before treating this as settled. Worth a real discussion with the
+user once that's done, not a unilateral change.
 
 Next: rent 4–6 **VM-type** instances spanning both generations, profile each with the
 unified collector, get a genuine leave-one-GPU-out result. Bonus: different hosts have
