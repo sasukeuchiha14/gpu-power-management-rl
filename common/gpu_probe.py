@@ -94,37 +94,86 @@ def _first_reason(msg):
     return (msg or "failed").splitlines()[0].strip() if msg else "failed"
 
 
+def _read_gpu_field(field):
+    """Read back a live value via nvidia-smi -- used to verify a lock/limit
+    actually applied, not just that the command claimed success."""
+    ok, out = _smi(f"--query-gpu={field}", "--format=csv,noheader,nounits")
+    if not ok or not out:
+        return None
+    try:
+        return float(out.splitlines()[0].strip())
+    except (ValueError, IndexError):
+        return None
+
+
+def _get_persistence_mode():
+    ok, out = _smi("--query-gpu=persistence_mode", "--format=csv,noheader")
+    return out.strip().splitlines()[0].strip() if ok and out else "Unknown"
+
+
+def _set_persistence_mode(enabled):
+    _smi("-pm", "1" if enabled else "0")
+
+
 def test_core_lock(h, limits):
-    """Lock core to a mid-range value, confirm it took, then always reset."""
+    """Lock core to a mid-range value, verify the ACHIEVED clock actually
+    moved (not just that the command reported success), then always reset."""
     target = int(limits["max_core_mhz"] * 0.55)
     try:
         ok, msg = _smi("-i", "0", "-lgc", f"{target},{target}")
         if not ok:
             return False, _first_reason(msg)
-        return True, f"locked to {target} MHz"
+        achieved = _read_gpu_field("clocks.current.sm")
+        if achieved is None:
+            return False, "lock reported success but clock unreadable"
+        tolerance = max(50.0, target * 0.1)
+        if abs(achieved - target) > tolerance:
+            return False, f"reported success but clock reads {achieved:.0f} MHz, not ~{target} MHz -- likely a silent no-op"
+        return True, f"locked to {target} MHz (confirmed: {achieved:.0f} MHz)"
     finally:
         _smi("-i", "0", "-rgc")          # never leave the GPU locked
 
 
 def test_mem_lock(h, limits):
+    """Same verify-don't-trust approach as test_core_lock. This matters more
+    here: nvidia-smi -lmc reports success and prints the new target even when
+    persistence mode is off and the change silently never takes effect --
+    caught empirically on a rented RTX 4070 (23 Aug 2026). main() enables
+    persistence mode before calling this for exactly that reason; this
+    readback check is a second, independent line of defense."""
     target = int(limits["max_mem_mhz"])
     try:
         ok, msg = _smi("-i", "0", "-lmc", f"{target},{target}")
-        return ok, (f"locked to {target} MHz" if ok
-                    else _first_reason(msg))
+        if not ok:
+            return False, _first_reason(msg)
+        achieved = _read_gpu_field("clocks.current.memory")
+        if achieved is None:
+            return False, "lock reported success but clock unreadable"
+        tolerance = max(50.0, target * 0.05)
+        if abs(achieved - target) > tolerance:
+            return False, f"reported success but clock reads {achieved:.0f} MHz, not ~{target} MHz -- likely a silent no-op (needs persistence mode)"
+        return True, f"locked to {target} MHz (confirmed: {achieved:.0f} MHz)"
     finally:
         _smi("-i", "0", "-rmc")
 
 
 def test_power_limit(h, limits):
+    """Same verify-don't-trust approach -- nvidia-smi -pl has the identical
+    silent-no-op-without-persistence-mode behaviour as -lmc."""
     cur = limits["power_limit_w"]
     if cur != cur:                        # NaN
         return False, "power limit unreadable"
     target = int(cur * 0.9)
     try:
         ok, msg = _smi("-i", "0", "-pl", str(target))
-        return ok, (f"set to {target} W" if ok
-                    else _first_reason(msg))
+        if not ok:
+            return False, _first_reason(msg)
+        achieved = _read_gpu_field("power.limit")
+        if achieved is None:
+            return False, "set reported success but limit unreadable"
+        if abs(achieved - target) > max(2.0, target * 0.05):
+            return False, f"reported success but limit reads {achieved:.0f} W, not ~{target} W -- likely a silent no-op (needs persistence mode)"
+        return True, f"set to {target} W (confirmed: {achieved:.0f} W)"
     finally:
         _smi("-i", "0", "-pl", str(int(cur)))
 
@@ -170,9 +219,20 @@ def main():
     print(f"  memory states   : {len(mems)}  {mems[:6]}")
     print("-" * 62)
 
-    core_ok, core_msg = test_core_lock(h, limits)
-    mem_ok, mem_msg = test_mem_lock(h, limits)
-    pl_ok, pl_msg = test_power_limit(h, limits)
+    # Persistence mode matters: nvidia-smi -lmc/-pl both report success and
+    # print the requested target even when persistence mode is off and the
+    # change silently never applies (caught on a rented RTX 4070, 23 Aug
+    # 2026 -- see the docstrings on test_mem_lock/test_power_limit). -lgc is
+    # unaffected. Enable it for the duration of the tests, restore whatever
+    # it was set to afterward -- this is someone else's rented machine.
+    orig_persistence = _get_persistence_mode()
+    _set_persistence_mode(True)
+    try:
+        core_ok, core_msg = test_core_lock(h, limits)
+        mem_ok, mem_msg = test_mem_lock(h, limits)
+        pl_ok, pl_msg = test_power_limit(h, limits)
+    finally:
+        _set_persistence_mode(orig_persistence.strip().lower() == "enabled")
 
     mark = lambda b: "YES" if b else "NO "
     print(f"  core clock lock : {mark(core_ok)}  {core_msg}")
@@ -207,6 +267,12 @@ def main():
         "memory_states": len(mems),
         "core_lock": core_ok, "mem_lock": mem_ok, "power_limit": pl_ok,
         "usable": usable,
+        # True from this version onward: lock/limit results below are
+        # confirmed by reading the achieved value back, not just trusting
+        # nvidia-smi's own success message (which lies for -lmc/-pl without
+        # persistence mode -- see test_mem_lock's docstring). Rows without
+        # this column predate the fix.
+        "verified_readback": True,
     }
     with open("gpu_capability.json", "w") as f:
         json.dump(out, f, indent=2)

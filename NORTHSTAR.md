@@ -119,25 +119,39 @@ description usually says outright whether it's a container ("Docker container," 
 Check that before renting for a real session — a container-type instance will very
 likely reproduce the same UNUSABLE result regardless of which GPU it has.
 
-**Bonus finding, now confirmed on a second card:** both working VM instances locked
-*memory* clock and set the *power limit* too, not just core — first a desktop RTX 3060
-(Ampere), then a desktop RTX 4070 (Ada, a different generation entirely) on 25 Aug. Both
-succeeded on all three controls. The two physical mobile/laptop cards tested earlier this
-project (GTX 1650 Max-Q, RTX 3050 Ti Laptop) both rejected memory-clock locking as a
-genuine driver limitation, not a permissions issue. Current read, n=4 (2 mobile: rejected,
-2 desktop across 2 generations: fully worked): the earlier "consumer cards can't do memory
-clock" conclusion looks like it was really "*mobile* GeForce chips can't," not a universal
-consumer-card limit. Interesting structural detail, consistent across both desktop cards:
-the memory P-states follow the same shape on both — two near-max 3D states close together,
-then a big drop to a 5001 MHz "compute" state, then 810 (video decode), then 405 (idle).
+**Bonus finding — but a real bug in HOW it was first measured, caught and fixed same day.**
+Both working VM instances appeared to lock *memory* clock and set the *power limit* too,
+not just core. Digging into that directly with the user turned up an important gotcha:
+`nvidia-smi -lmc` and `-pl` both **report success and print the requested value even when
+persistence mode is off and the change silently never applies** — confirmed by hand on the
+RTX 4070 (locked to 5001 MHz, command said "done," `clocks.current.memory` still read
+10501 MHz; only worked after `nvidia-smi -pm 1`). `-lgc` (core) does **not** have this
+problem — it applies immediately regardless of persistence mode, confirmed independently.
 
-**Still not yet a decided design change** — `common/features.py` still deliberately
-excludes Mem_F, because a fleet where some cards support memory control and others don't
-breaks having one unified action space. Two desktop cards agreeing is stronger evidence
-than one, but the mobile side of the comparison is still second-hand (the RTX 3050 Ti was
-never actually run through `gpu_probe.py`, only inferred from a README note) — that's the
-next gap worth closing before treating this as settled. Worth a real discussion with the
-user once that's done, not a unilateral change.
+`gpu_probe.py` originally only checked whether the command was *rejected*, never whether
+the value actually *changed* — so it couldn't have caught this. Fixed same day: it now
+enables persistence mode before testing and reads back the achieved clock/limit instead of
+trusting the command's own text, restoring the original persistence-mode state afterward.
+Re-ran the fixed probe live on the same RTX 4070: core, mem, and power all **independently
+confirmed** this time (`verified_readback=True` in the survey CSV).
+
+**The RTX 3060's mem/power "success" was measured with the old, unfixed probe and was
+never independently re-verified** — that instance was destroyed before the fix landed. It
+might well be genuine (the RTX 4070 turned out to be, once properly checked), or it might
+have been the same silent-no-op false positive. Marked `verified_readback=False` in the
+survey rather than assumed either way. Rent another desktop card to get a second properly-
+verified data point before treating "desktop cards can do memory clock" as settled — right
+now there's exactly **one** rigorously-confirmed desktop card (the RTX 4070), not two.
+
+The two physical mobile/laptop cards (GTX 1650 Max-Q, RTX 3050 Ti Laptop) rejected
+memory-clock locking outright with a driver-level "not supported" error — that kind of
+hard rejection doesn't depend on persistence mode, so those results stand as-is.
+
+**Still not a decided design change** — `common/features.py` still deliberately excludes
+Mem_F. Even setting the measurement bug aside, a fleet where some cards support memory
+control and others don't breaks having one unified action space; that's a real discussion
+to have with the user once the evidence is solid, not a unilateral change based on a
+single (now doubly-uncertain) data point.
 
 Next: rent 4–6 **VM-type** instances spanning both generations, profile each with the
 unified collector, get a genuine leave-one-GPU-out result. Bonus: different hosts have

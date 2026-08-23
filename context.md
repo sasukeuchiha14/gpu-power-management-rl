@@ -14,34 +14,37 @@ scorecard) → [CLAUDE.md](CLAUDE.md) (deep technical reference, only as needed)
 **Branch:** `unified-model` (all work happens here; `main` is teammates' committed work,
 left untouched unless explicitly asked to merge).
 
-**The rented-GPU question is answered.** Two live probes on vast.ai, same GPU model
-(RTX 3060): a Docker-container instance was UNUSABLE (all three of core/mem/power control
-denied), a VM-type instance (Ubuntu 22.04 CLI template) was fully USABLE (all three
-worked). **Conclusion: always rent VM-type instances for profiling, never container-type
-ones** — the template listing says which it is. Full data in
-`common/fleet_survey/fleet_survey.csv`. Second instance is currently still rented and
-sitting idle (SSH: `ssh -p 49313 root@173.185.79.174`) — nothing has been profiled on it
-yet, just probed. Ask the user whether to proceed to a real profiling run there, or
-destroy it first if a break is happening (it bills per hour while idle).
+**The rented-GPU question is answered.** Container-type vast.ai instances deny clock
+control entirely; VM-type instances (e.g. "Ubuntu 22.04 CLI (VM)" template) allow it.
+**Always rent VM-type for profiling, never container-type** — the template listing says
+which it is. Tested: RTX 3060 container (UNUSABLE), RTX 3060 VM (USABLE, but see caveat
+below), RTX 4070 VM (USABLE, rigorously confirmed). Full data in
+`common/fleet_survey/fleet_survey.csv`.
 
-**Bonus finding, deliberately not acted on yet:** that same working instance also
-succeeded at memory-clock and power-limit control — a *desktop* consumer card, unlike the
-two *mobile/laptop* consumer cards tested earlier (GTX 1650, RTX 3050 Ti) which both
-genuinely rejected memory-clock locking at the driver level. This might mean "consumer
-cards can't do memory clock" was really "*mobile* GeForce chips can't," not a universal
-consumer-card limit. Corrected the overclaiming comment in `common/features.py`, but
-**did not change the core-only action-space design** based on n=3 — that's a real decision
-for the user, not something to change unilaterally. Revisit once more desktop-card data
-exists. See NORTHSTAR.md's "one thing everything else depends on" section for full detail.
+**Found and fixed a real bug in `gpu_probe.py` on 25 Aug, mid-session, prompted by the user
+pushing back on an overclaim.** `nvidia-smi -lmc`/`-pl` report success and print the
+requested value even when persistence mode is off and the change silently never applies —
+`-lgc` (core) doesn't have this problem, applies immediately regardless. The probe
+originally only checked whether the command was rejected, never whether the value actually
+changed, so it couldn't catch this. Fixed: it now enables persistence mode before testing
+and reads back the achieved value instead of trusting the command text, restoring original
+persistence-mode state after. Verified the fix by re-running it live on the RTX 4070 — all
+three genuinely confirmed this time. **The earlier RTX 3060 VM "success" on mem/power was
+measured with the old buggy probe and that instance is now destroyed, so it can never be
+re-verified** — marked `verified_readback=False` in the survey rather than assumed either
+way. Right now there is exactly **one** rigorously-confirmed desktop card for memory-clock
+control (the RTX 4070), not two. Get a second properly-verified one before calling this
+settled. **Still explicitly not changing the core-only action-space design** over this —
+that's a real call for the user, not something to slip in unilaterally.
 
-**Last session ended:** 23 Aug 2026. Set up this doc structure, the shared
-`common/features.py` + `common/gpu_probe.py` modules, and verified remote-GPU access is
-viable (network egress works from this sandbox, SSH client present, GitHub push already
-authenticated via `gh`).
+**Currently running:** RTX 4070 VM instance, `ssh -p 25282 root@191.223.212.127` — still
+rented, nothing profiled on it yet beyond the probe. Ask the user what's next (rent a
+second desktop card to properly re-verify memory-clock control, or move to actually
+profiling this one).
 
-**Immediate next step:** waiting on the user to rent a vast.ai GPU instance and share the
-SSH connection line (`ssh -p <port> root@<ip>`). Once given: connect, clone this branch,
-`cd common && python3 gpu_probe.py`, report USABLE/UNUSABLE + specs back to the user
+**Last session activity:** 23–25 Aug 2026. Set up this doc structure, the shared
+`common/features.py` + `common/gpu_probe.py` modules, connected to and probed three real
+rented GPU instances, found and fixed the persistence-mode measurement bug above.
 **before** doing anything further on that box (explicit agreement — first touch on any
 rented machine is probe-then-check-in, never probe-then-immediately-profile).
 
