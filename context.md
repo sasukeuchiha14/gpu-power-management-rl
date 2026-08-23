@@ -17,36 +17,38 @@ left untouched unless explicitly asked to merge).
 **The rented-GPU question is answered.** Container-type vast.ai instances deny clock
 control entirely; VM-type instances (e.g. "Ubuntu 22.04 CLI (VM)" template) allow it.
 **Always rent VM-type for profiling, never container-type** — the template listing says
-which it is. Tested: RTX 3060 container (UNUSABLE), RTX 3060 VM (USABLE, but see caveat
-below), RTX 4070 VM (USABLE, rigorously confirmed). Full data in
-`common/fleet_survey/fleet_survey.csv`.
+which it is. Full data in `common/fleet_survey/fleet_survey.csv`.
 
 **Found and fixed a real bug in `gpu_probe.py` on 25 Aug, mid-session, prompted by the user
-pushing back on an overclaim.** `nvidia-smi -lmc`/`-pl` report success and print the
-requested value even when persistence mode is off and the change silently never applies —
-`-lgc` (core) doesn't have this problem, applies immediately regardless. The probe
-originally only checked whether the command was rejected, never whether the value actually
-changed, so it couldn't catch this. Fixed: it now enables persistence mode before testing
-and reads back the achieved value instead of trusting the command text, restoring original
-persistence-mode state after. Verified the fix by re-running it live on the RTX 4070 — all
-three genuinely confirmed this time. **The earlier RTX 3060 VM "success" on mem/power was
-measured with the old buggy probe and that instance is now destroyed, so it can never be
-re-verified** — marked `verified_readback=False` in the survey rather than assumed either
-way. Right now there is exactly **one** rigorously-confirmed desktop card for memory-clock
-control (the RTX 4070), not two. Get a second properly-verified one before calling this
-settled. **Still explicitly not changing the core-only action-space design** over this —
-that's a real call for the user, not something to slip in unilaterally.
+pushing back on an overclaim, then resolved the same day.** `nvidia-smi -lmc`/`-pl` report
+success and print the requested value even when persistence mode is off and the change
+silently never applies — `-lgc` (core) doesn't have this problem, applies immediately
+regardless. The probe originally only checked whether the command was rejected, never
+whether the value actually changed, so it couldn't catch this. Fixed: it now enables
+persistence mode before testing and reads back the achieved value instead of trusting the
+command text, restoring original persistence-mode state after.
 
-**Currently running:** RTX 4070 VM instance, `ssh -p 25282 root@191.223.212.127` — still
-rented, nothing profiled on it yet beyond the probe. Ask the user what's next (rent a
-second desktop card to properly re-verify memory-clock control, or move to actually
-profiling this one).
+The original RTX 3060 VM result (mem/power success) was measured with the old buggy probe
+and that instance was already destroyed, so it looked like it could never be re-verified —
+but rented a fresh RTX 3060 (same model) and re-ran the fixed probe on it. **Result: it was
+genuine all along.** Core/mem/power all matched exactly (e.g. memory locked to 7501 MHz,
+requested and achieved identical). Combined with the RTX 4070 (also rigorously confirmed):
+**two desktop cards across two GPU generations (Ampere, Ada) now both properly confirm
+memory-clock and power-limit control.** The evidence is solid now, not just promising.
+
+**Still explicitly not changing the core-only action-space design** over this — the mobile
+cards (part of the target product) genuinely can't do memory control regardless, so adding
+it for desktop-only would break having one unified action space. That's a real design
+conversation to have with the user, not something to slip in unilaterally just because the
+data now supports it.
+
+**Currently running:** two instances — the RTX 4070 VM (`ssh -p 25282 root@191.223.212.127`)
+and the fresh RTX 3060 VM (`ssh -p 61424 root@142.170.96.180`). Neither has had a real
+profiling run yet, both only probed. Ask the user what's next.
 
 **Last session activity:** 23–25 Aug 2026. Set up this doc structure, the shared
-`common/features.py` + `common/gpu_probe.py` modules, connected to and probed three real
-rented GPU instances, found and fixed the persistence-mode measurement bug above.
-**before** doing anything further on that box (explicit agreement — first touch on any
-rented machine is probe-then-check-in, never probe-then-immediately-profile).
+`common/features.py` + `common/gpu_probe.py` modules, connected to and probed four real
+rented GPU instances, found and fully resolved the persistence-mode measurement bug above.
 
 **The 4 items below (found in the 23 Aug full-repo review) are now FIXED — safe to profile
 a new card for real.** Kept here so a fresh session doesn't waste time re-finding them:

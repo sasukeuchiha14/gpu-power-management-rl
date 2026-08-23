@@ -15,24 +15,24 @@ Deliberately EXCLUDED:
                          design choice, not a settled hardware fact
   * Avg_Time_S        -> not observable live for an unknown workload
 
-NOTE on Mem_F (23 Aug 2026, corrected 25 Aug 2026): the original reasoning
-here was "consumer cards expose no usable memory-clock range," based on two
-MOBILE GeForce cards (GTX 1650 Max-Q, RTX 3050 Ti Laptop) where `-lmc` was
-outright rejected by the driver -- that result is solid, it doesn't depend
-on anything fragile. Two rented desktop cards *appeared* to succeed at
-memory-clock + power-limit control, but the first one (RTX 3060) was
-measured with a since-fixed gpu_probe.py bug: `-lmc`/`-pl` report success
-even when persistence mode is off and the change silently never applies.
-Only the SECOND desktop card (RTX 4070) was tested with the corrected,
-readback-verifying probe, and it genuinely did work. So the real evidence
-right now is: 2 mobile cards hard-rejected (reliable), 1 desktop card
-rigorously confirmed working (reliable), 1 desktop card of unknown
-reliability (pre-fix result, never re-verified). Promising, but "desktop
-GeForce chips can do memory clock" is resting on n=1 solid data point, not
-two. Core-only is kept here because a fleet with inconsistent per-card
-action spaces breaks the "one unified model" goal, not because the
-capability doesn't exist -- get a second verified desktop-card result
-before treating this as a real design question. See NORTHSTAR.md.
+NOTE on Mem_F (23 Aug 2026, corrected 25 Aug, resolved 25 Aug): the original
+reasoning here was "consumer cards expose no usable memory-clock range,"
+based on two MOBILE GeForce cards (GTX 1650 Max-Q, RTX 3050 Ti Laptop) where
+`-lmc` was outright rejected by the driver -- that result is solid, always
+was. Two rented DESKTOP cards were tested and both genuinely support
+memory-clock + power-limit control on an unrestricted VM: RTX 3060 (Ampere)
+and RTX 4070 (Ada) -- two different generations, both confirmed with a
+readback-verifying probe (gpu_probe.py originally had a bug where
+`-lmc`/`-pl` report success even when the change silently never applies;
+fixed, then both cards re-checked properly; see NORTHSTAR.md for the full
+story). So the evidence is now solid, not just promising: mobile GeForce
+chips hard-reject memory-clock control, desktop GeForce chips across two
+generations support it fully. Core-only is STILL kept here -- not because
+the capability doesn't exist on desktop cards, but because a fleet where
+laptop cards (part of the target product) can't do memory control and
+desktop cards can breaks having one unified action space. That's now a real
+design decision worth discussing with the user, not a question of whether
+the data supports it.
 """
 
 FEATURES = [

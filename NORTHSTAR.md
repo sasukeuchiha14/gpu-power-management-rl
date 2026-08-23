@@ -135,23 +135,33 @@ trusting the command's own text, restoring the original persistence-mode state a
 Re-ran the fixed probe live on the same RTX 4070: core, mem, and power all **independently
 confirmed** this time (`verified_readback=True` in the survey CSV).
 
-**The RTX 3060's mem/power "success" was measured with the old, unfixed probe and was
-never independently re-verified** — that instance was destroyed before the fix landed. It
-might well be genuine (the RTX 4070 turned out to be, once properly checked), or it might
-have been the same silent-no-op false positive. Marked `verified_readback=False` in the
-survey rather than assumed either way. Rent another desktop card to get a second properly-
-verified data point before treating "desktop cards can do memory clock" as settled — right
-now there's exactly **one** rigorously-confirmed desktop card (the RTX 4070), not two.
+**Resolved, 25 Aug 2026, same day:** the original RTX 3060 instance was already destroyed
+by the time the bug was found, so it couldn't be re-checked directly — but rented a fresh
+RTX 3060 (same model) and re-ran the fixed, readback-verifying probe on it. Result:
+core/mem/power all **genuinely confirmed** (e.g. memory locked to 7501 MHz, requested and
+achieved matched exactly). The original result turned out to be real all along, not a false
+positive from the bug — but that's only knowable in hindsight, because the fixed test could
+have just as easily shown a mismatch. **Two desktop cards across two GPU generations are
+now both rigorously confirmed**: RTX 3060 (Ampere) and RTX 4070 (Ada), both `verified_readback=True`
+in the survey CSV.
 
 The two physical mobile/laptop cards (GTX 1650 Max-Q, RTX 3050 Ti Laptop) rejected
 memory-clock locking outright with a driver-level "not supported" error — that kind of
-hard rejection doesn't depend on persistence mode, so those results stand as-is.
+hard rejection doesn't depend on persistence mode, so those results stood correct the whole
+time.
+
+**Current read (n=4, all methodologically sound now): 2 mobile GeForce cards hard-reject
+memory-clock control at the driver level; 2 desktop GeForce cards across 2 generations
+(Ampere, Ada) both genuinely support core, memory, AND power-limit control on an
+unrestricted VM.** This is real evidence now, not a hopeful pattern resting on an unverified
+data point.
 
 **Still not a decided design change** — `common/features.py` still deliberately excludes
-Mem_F. Even setting the measurement bug aside, a fleet where some cards support memory
-control and others don't breaks having one unified action space; that's a real discussion
-to have with the user once the evidence is solid, not a unilateral change based on a
-single (now doubly-uncertain) data point.
+Mem_F. Even with solid evidence now, a fleet where some cards support memory control and
+others don't breaks having one unified action space (the mobile cards genuinely can't do
+it, and laptop cards are still part of the target product). That's a real design
+conversation to have with the user now that the evidence backing it is trustworthy — a
+decision made deliberately, not a change slipped in because the data happened to look good.
 
 Next: rent 4–6 **VM-type** instances spanning both generations, profile each with the
 unified collector, get a genuine leave-one-GPU-out result. Bonus: different hosts have
