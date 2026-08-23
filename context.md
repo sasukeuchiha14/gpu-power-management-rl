@@ -14,6 +14,26 @@ scorecard) → [CLAUDE.md](CLAUDE.md) (deep technical reference, only as needed)
 **Branch:** `unified-model` (all work happens here; `main` is teammates' committed work,
 left untouched unless explicitly asked to merge).
 
+**The rented-GPU question is answered.** Two live probes on vast.ai, same GPU model
+(RTX 3060): a Docker-container instance was UNUSABLE (all three of core/mem/power control
+denied), a VM-type instance (Ubuntu 22.04 CLI template) was fully USABLE (all three
+worked). **Conclusion: always rent VM-type instances for profiling, never container-type
+ones** — the template listing says which it is. Full data in
+`common/fleet_survey/fleet_survey.csv`. Second instance is currently still rented and
+sitting idle (SSH: `ssh -p 49313 root@173.185.79.174`) — nothing has been profiled on it
+yet, just probed. Ask the user whether to proceed to a real profiling run there, or
+destroy it first if a break is happening (it bills per hour while idle).
+
+**Bonus finding, deliberately not acted on yet:** that same working instance also
+succeeded at memory-clock and power-limit control — a *desktop* consumer card, unlike the
+two *mobile/laptop* consumer cards tested earlier (GTX 1650, RTX 3050 Ti) which both
+genuinely rejected memory-clock locking at the driver level. This might mean "consumer
+cards can't do memory clock" was really "*mobile* GeForce chips can't," not a universal
+consumer-card limit. Corrected the overclaiming comment in `common/features.py`, but
+**did not change the core-only action-space design** based on n=3 — that's a real decision
+for the user, not something to change unilaterally. Revisit once more desktop-card data
+exists. See NORTHSTAR.md's "one thing everything else depends on" section for full detail.
+
 **Last session ended:** 23 Aug 2026. Set up this doc structure, the shared
 `common/features.py` + `common/gpu_probe.py` modules, and verified remote-GPU access is
 viable (network egress works from this sandbox, SSH client present, GitHub push already
