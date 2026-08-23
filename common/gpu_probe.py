@@ -134,8 +134,18 @@ def main():
     ap.add_argument("--survey", help="append a row to this CSV")
     args = ap.parse_args()
 
-    pynvml.nvmlInit()
-    h = pynvml.nvmlDeviceGetHandleByIndex(0)
+    try:
+        pynvml.nvmlInit()
+        h = pynvml.nvmlDeviceGetHandleByIndex(0)
+    except pynvml.NVMLError as e:
+        print("=" * 62)
+        print(f"  No NVIDIA GPU visible to this process: {e}")
+        print("  On a rented container this usually means GPU passthrough")
+        print("  wasn't enabled for this instance -- check the host's docs,")
+        print("  or try a different offer. Nothing was tested; nothing to")
+        print("  reset.")
+        print("=" * 62)
+        return 1
     name = pynvml.nvmlDeviceGetName(h)
     if isinstance(name, bytes):
         name = name.decode()
@@ -170,8 +180,15 @@ def main():
     print(f"  power limit set : {mark(pl_ok)}  {pl_msg}")
     print("-" * 62)
 
-    usable = core_ok and len(cores) >= 8
-    if usable:
+    # `cores` comes from a separate NVML enumeration call that can fail even
+    # when locking itself (test_core_lock, tested directly via nvidia-smi)
+    # works fine -- e.g. under some virtualised/passthrough setups. Don't let
+    # a failed enumeration alone downgrade a GPU that actually took the lock.
+    usable = core_ok and (len(cores) >= 8 or not cores)
+    if usable and not cores:
+        print("  VERDICT: USABLE -- core lock works. (Could not enumerate the")
+        print("           full level list, but the control path is live.)")
+    elif usable:
         print("  VERDICT: USABLE -- core control works. Proceed to profiling.")
     elif core_ok:
         print(f"  VERDICT: MARGINAL -- core lock works but only {len(cores)} levels.")
