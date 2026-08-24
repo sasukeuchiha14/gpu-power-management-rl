@@ -12,7 +12,10 @@ workloads, leave-one-GPU-out. Lower is better.
 
 ---
 
-## 1. The state representation is NOT the bottleneck
+## 1. First read: "the state representation is not the bottleneck" — LATER SHOWN WRONG
+
+Kept here because the correction is the point. See §7: an ablation showed this
+conclusion did not survive, and the reason it looked convincing is instructive.
 
 A supervised probe on the same 6 features, leave-one-GPU-out, predicting
 "is the current clock below this workload's EDP optimum?":
@@ -21,9 +24,9 @@ A supervised probe on the same 6 features, leave-one-GPU-out, predicting
 |---|---|---|---|
 | mean over 8 GPUs | 0.561 | 0.810 | **0.838** |
 
-81–84% vs a 56% majority baseline, on every held-out GPU. The signal exists and
-it transfers across GPUs and generations. So the instability lives in the RL
-training, not in `common/features.py`.
+81–84% vs a 56% majority baseline, on every held-out GPU. This *looked* like
+proof that the features carry transferable workload signal, and the
+investigation proceeded on that basis. It was wrong — see §7.
 
 ## 2. Two environment defects, one of them damaging
 
@@ -137,3 +140,95 @@ cluster is remarkably tight across GPUs:
 
 Naming the workload is hopeless; identifying the *regime* is a binary question
 and much easier. That is the next thing tested.
+
+
+---
+
+## 7. CORRECTION, and the actual root cause: startup-diluted telemetry
+
+### 7a. The §1 probe was measuring position, not workload
+
+Ablating the feature set on the same leave-one-GPU-out task
+("is the current clock below this workload's optimum?"):
+
+| feature set | LOO accuracy |
+|---|---|
+| majority-class baseline | 0.570 |
+| **all 6 features** | **0.812** |
+| `core_frac` only | **0.781** |
+| the other 5 (no `core_frac`) | 0.696 |
+
+`core_frac` — where you currently sit on the clock range — alone gets 0.781.
+All five real telemetry channels together add **3.1 points**. The §1 result was
+almost entirely "low clock ⇒ probably below optimum", which requires no
+knowledge of the workload at all. The telemetry carries very little
+transferable workload signal, and §1's conclusion is retracted.
+
+Consistent with that, everything requiring actual workload characterisation
+fails:
+
+| task (leave-one-GPU-out) | result | chance |
+|---|---|---|
+| identify which of 12 workloads | 0.216 | 0.083 |
+| identify compute- vs bandwidth-bound regime (binary) | **0.653** | ~0.5 |
+
+A regime-classifier policy (predict the regime, then use that regime's mean
+optimum measured on training GPUs) scores 0.093 (K=2) / 0.068 (K=3) against
+the fixed clock's 0.037 — it loses, because at 65% binary accuracy it picks the
+wrong regime often enough to give back more than adaptation gains.
+
+### 7b. Why the telemetry is uninformative — a measurement bug
+
+`collect_dataset.py` ran its 20 Hz NVML sampler across the entire
+`subprocess.run(...)`: interpreter startup, `import torch`, CUDA context
+creation — typically 2–4 s of idle GPU — while the actual timed work is often
+0.15–0.6 s. Reported utilisation and power are therefore averages dominated by
+idle time.
+
+Evidence from the committed 8-GPU fleet:
+
+| observation | value |
+|---|---|
+| corr(GPU-only duration, reported utilisation) | **+0.708** |
+| profiled points with < 0.5 s of real GPU work | 494/799 (62%) |
+| …their mean reported utilisation | **8.3 %** |
+| points with > 2 s of real work, mean reported utilisation | 40.2 % |
+| **highest utilisation recorded anywhere in the fleet** | **64.4 %** |
+| `pt_matmul` (dense GEMM, canonically compute-saturating) | 21.7 % |
+
+Reported utilisation tracks *how long a workload ran relative to fixed startup
+cost*, not how hard it drove the GPU. No measurement in the entire fleet ever
+shows a saturated GPU, which for dense GEMM is not physically credible.
+
+Note the timing column is NOT affected: `Avg_Time_S` comes from each
+benchmark's own `Duration:` line and correctly excludes startup. Only the
+telemetry channels are diluted — which is exactly the set of features the
+controller must use to characterise a workload.
+
+### 7c. Fix
+
+* All 12 benchmarks now print `Window: <start_ts> <end_ts>` around their
+  measured region, emitted *after* the timed section so it adds no measurement
+  overhead.
+* `GPUProfiler` timestamps every sample; `get_stats(window)` averages only
+  in-window samples, falling back to whole-process averaging when a window is
+  absent or too small.
+* Verified against a synthetic trace (3 s idle at 2% util, then 1 s of work at
+  95%): whole-process average reports 25.2%, window-scoped reports 95.0%. The
+  25.2% artifact closely matches the real fleet's `pt_matmul` 21.7% and
+  `pt_bert` 25.4%.
+
+### 7d. What this means for the conclusion
+
+The negative result in §5–§6 — telemetry-driven adaptation cannot beat a fixed
+clock — is, on the current data, **an artifact of instrumentation and not a
+demonstrated property of GPU DVFS**. It should not be written up as the latter.
+
+The fixed-clock finding itself still stands and is independent of this bug: it
+depends only on EDP and timing, both of which are correctly measured. A static
+clock at 0.6x max still captures ~88% of the oracle's gain over the max-clock
+governor.
+
+**Deciding this properly requires re-collecting the fleet with the corrected
+sampler.** The datasets committed so far cannot answer whether adaptation pays,
+because their telemetry columns do not carry the information adaptation needs.

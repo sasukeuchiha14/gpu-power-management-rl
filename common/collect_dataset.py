@@ -93,10 +93,14 @@ class GPUProfiler(threading.Thread):
         self.h = handle
         self.running = True
         self.samples = {"pwr": [], "temp": [], "gpu_util": [], "mem_util": [], "vram_used": []}
+        # Wall-clock stamp per sample, so get_stats() can restrict the average
+        # to the workload's own measured window (see get_stats).
+        self.t = []
 
     def run(self):
         while self.running:
             try:
+                self.t.append(time.time())
                 self.samples["pwr"].append(pynvml.nvmlDeviceGetPowerUsage(self.h) / 1000.0)
                 self.samples["temp"].append(
                     pynvml.nvmlDeviceGetTemperature(self.h, pynvml.NVML_TEMPERATURE_GPU))
@@ -112,12 +116,39 @@ class GPUProfiler(threading.Thread):
     def stop(self):
         self.running = False
 
-    def get_stats(self):
+    def get_stats(self, window=None):
+        """Aggregate telemetry. `window` is (start_ts, end_ts) from the
+        benchmark's own "Window:" line -- when given, ONLY samples taken inside
+        the measured region are averaged.
+
+        Why this matters (found 25 Aug 2026): this sampler runs for the whole
+        subprocess, which includes interpreter startup, `import torch` and CUDA
+        context creation -- typically 2-4s of idle GPU -- while the actual timed
+        work is often 0.15-0.6s. Averaging across all of it made the recorded
+        utilisation/power measure how long a workload ran relative to fixed
+        startup cost rather than how hard it drove the GPU. Measured on the
+        committed 8-GPU fleet: corr(GPU-only duration, reported utilisation)
+        = +0.708, 62% of profiled points reported under 9% utilisation, and the
+        highest utilisation recorded anywhere was 64.4% -- dense GEMM
+        (pt_matmul) reported 21.7%. That made the telemetry features nearly
+        useless for characterising a workload, which is why leave-one-GPU-out
+        adaptation could not beat a fixed clock (see
+        docs/rl_instability_investigation.md).
+
+        Falls back to whole-process averaging when no window is available, so
+        older benchmark scripts still work -- but such rows carry the dilution.
+        """
         if not self.samples["pwr"]:
             return 0.0, 0, 0.0, 0.0, 0.0
-        s = self.samples
-        avg = lambda k: sum(s[k]) / len(s[k])
-        return avg("pwr"), max(s["temp"]), avg("gpu_util"), avg("mem_util"), avg("vram_used")
+        s, idx = self.samples, None
+        if window and self.t:
+            t0, t1 = window
+            idx = [i for i, ts in enumerate(self.t) if t0 <= ts <= t1]
+            if len(idx) < 3:      # too few in-window samples to average safely
+                idx = None
+        pick = (lambda k: [s[k][i] for i in idx]) if idx else (lambda k: s[k])
+        avg = lambda k: sum(pick(k)) / len(pick(k))
+        return avg("pwr"), max(pick("temp")), avg("gpu_util"), avg("mem_util"), avg("vram_used")
 
 
 def _slugify(name):
@@ -319,18 +350,23 @@ def main():
 
                             if res.returncode != 0:
                                 continue
-                            dur = None
+                            dur, window = None, None
                             for line in res.stdout.splitlines():
-                                if "Duration:" in line:
+                                if "Duration:" in line and dur is None:
                                     try:
                                         dur = float(line.split("Duration:")[1].strip())
-                                        break
+                                    except ValueError:
+                                        pass
+                                elif "Window:" in line and window is None:
+                                    try:
+                                        a, b = line.split("Window:")[1].split()
+                                        window = (float(a), float(b))
                                     except ValueError:
                                         pass
                             if dur is None or dur <= 0:
                                 continue
                             if run_idx > 0:  # skip warmup
-                                pwr, tpeak, gu, mu, vram = monitor.get_stats()
+                                pwr, tpeak, gu, mu, vram = monitor.get_stats(window)
                                 run_data["times"].append(dur)
                                 run_data["pwrs"].append(pwr)
                                 run_data["gpu_utils"].append(gu)

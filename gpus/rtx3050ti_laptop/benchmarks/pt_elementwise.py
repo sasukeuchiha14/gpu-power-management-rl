@@ -30,6 +30,15 @@ def run():
     torch.cuda.synchronize()
     duration = time.time() - start
     print(f"Duration: {duration:.4f}")
+    # Window markers: the collector samples NVML across this whole process,
+    # which includes interpreter start, `import torch` and CUDA context
+    # creation -- seconds of idle GPU. Averaging telemetry over all of it
+    # made reported utilisation track how long the workload ran rather than
+    # how hard it drove the GPU (measured corr +0.708; 62% of profiled
+    # points reported <9% util). Emitting the measured window lets the
+    # collector average only samples taken inside it. Printed AFTER the
+    # timed region so it adds no overhead to the measurement itself.
+    print(f"Window: {start:.6f} {start + duration:.6f}")
 
     # Explicit cleanup
     del A, B, C
