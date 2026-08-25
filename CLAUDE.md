@@ -1,23 +1,146 @@
 # CLAUDE.md — Technical Reference (Capstone: GPU Power Management via RL)
 
 > **This is the deep technical reference — architecture, RL formulation, data notes.**
-> It changes slowly. For current status, active branch, and what to do next, read
-> **[context.md](context.md) first, always** — that file is the one kept up to date
-> every session. For the end-product definition and the direction scorecard, see
-> **[NORTHSTAR.md](NORTHSTAR.md)**.
+> For current status and what to do next read **[context.md](context.md) first, always**.
+> For what we found and what to do about it, read
+> **[docs/FINDINGS_REPORT.md](docs/FINDINGS_REPORT.md)**. For the end-product definition and
+> the scorecard, see **[NORTHSTAR.md](NORTHSTAR.md)**.
+
+> ## ⚠️ READ THIS BEFORE TRUSTING ANYTHING BELOW
 >
-> This file's own internal facts (dataset sizes, feature counts, file paths) can go
-> stale as work lands on `unified-model` — when it disagrees with the code, the code
-> wins, and it's due for a refresh. It was last verified in full against commit
-> `1dbe108`, then partially updated against `99f943d`; treat sections that read
-> `state_col_order` / `Workload_Name_*` one-hots as describing the **old, pre-unified**
-> design (kept for the RTX 4500 contrast case), not the target architecture.
+> **1. Sections 1–11 describe the OLD per-card architecture** (`gpus/rtx4500_ada/`,
+> `gpus/rtx3050ti_laptop/`) with workload one-hot state vectors, 23/16 features and
+> per-card weights. That design is **superseded**. The current architecture is the
+> unified 6-feature, 3-action, core-only design in `common/` — see §0 below. The old
+> sections are kept because the RTX 4500 tree still exists as a supplementary contrast
+> case and because §9's issue list is still valid for it.
+>
+> **2. The telemetry columns in every dataset collected before 25 Aug 2026 are
+> contaminated.** NVML was sampled across whole benchmark subprocesses including 2–4 s of
+> interpreter/CUDA startup while the real work was often 0.15–0.6 s, so recorded
+> utilisation and power encode startup overhead rather than workload behaviour
+> (`corr(duration, utilisation) = +0.708`; peak utilisation anywhere in an 8-GPU fleet =
+> 64.4%; dense GEMM = 21.7%). `Avg_Time_S` and EDP are **unaffected**. The collector is
+> fixed; existing data is not. See FINDINGS_REPORT §4 and
+> `common/analysis/telemetry_dilution.py`. This is issue #25 in §9.
+>
+> **3. When this file disagrees with the code, the code wins.** Sections 1–11 were last
+> verified in full against commit `1dbe108`.
 
 ---
 
-> Maintained as the technical source of truth for research-paper writing.
-> Everything here is derived from the actual repository code/data at commit `1dbe108`
-> ("Realtime testing on rtx3050ti"). Nothing here is assumed or invented.
+## 0. Current architecture (`common/`) — this is the live design
+
+Everything in this section supersedes the per-card material in §1–§11.
+
+**State (6 features, `common/features.py`).** `core_frac`, `sm_util`, `mem_util`,
+`power_frac`, `temp_frac`, `vram_frac`. Every value is normalised against *that card's own*
+NVML-reported limits, so 0.7 means the same physical thing on a 70 W laptop chip and a
+450 W RTX 4090. Deliberately excluded: workload one-hot (cannot exist for an unseen app),
+`Avg_Time_S` (not observable live), `Mem_F` (mobile parts reject memory-clock control, and
+one unified action space is worth more than per-tier capability).
+
+**Action (3, core-only).** `DEC_CORE` / `INC_CORE` / `HOLD`, applied to a tracked
+normalised setpoint whose stride is inferred from the loaded data's own level spacing.
+
+**Frame stack:** 3. **Observation noise:** `N(0, 0.01)` clipped to [0,1].
+
+**Reward.** `1 − per-workload-minmax(EDP)` where `EDP = Avg_Pwr_W · Avg_Time_S²`.
+**Important:** `common/dataset_view.py` re-normalises this over only the rows a core-only
+controller can actually reach. Without it, the min-max spans memory levels the controller
+cannot set, compressing the controllable decision space into as little as 63% of the
+reward range (measured on RTX 4090).
+
+**Module map.**
+
+| file | role |
+|---|---|
+| `common/features.py` | the 6 features, action set, raw CSV schema. Single source of truth. |
+| `common/gpu_probe.py` | capability probe. Run FIRST on any new machine; confirms clock control actually applies (readback-verified, not just command-accepted). |
+| `common/collect_dataset.py` | 2D core×memory profiler. Telemetry now window-scoped (see warning 2). |
+| `common/preprocess_desktop.py` | raw CSV → 6-feature `preprocessed_dataset.csv`. Pins each dataset to the exact (GPU, driver) pair that produced it. |
+| `common/dataset_view.py` | core-only reachable view with correctly re-normalised reward. |
+| `common/unified_env.py` | multi-GPU Gymnasium env; `discover_datasets()`, `--holdout` support. |
+| `common/train_unified.py` | original trainer (kept for reference/comparison). |
+| `common/train_unified_v2.py` | configurable trainer with three RL bug fixes; see §0.1. |
+| `common/eval_policies.py` | policy-agnostic evaluation + the full baseline suite. |
+| `common/evaluate_holdout.py` | leave-one-GPU-out evaluation. |
+| `common/aggregate_seed_sweep.py` | multi-seed variance aggregation. |
+| `common/analysis/` | the scripts that produced every reported number. |
+
+**Data.** 8 GPUs profiled: RTX 3060/3070/3080/3090 (Ampere), RTX 4070/4070 Ti/4090 (Ada),
+RTX 3050 Ti laptop. Each `gpus/<slug>/data/` holds the raw sweep, a quicktest, and the
+preprocessed 6-feature view.
+
+### 0.1 Three RL defects fixed in `train_unified_v2.py`
+
+1. **Time-limit truncation treated as termination.** v1 computed
+   `done = terminated or truncated` and zeroed the bootstrap with `(1 − done)`.
+   `terminated` is always `False` here; `truncated` fires at `max_steps`. Every episode's
+   final transition therefore taught the agent that value vanishes at an arbitrary boundary
+   that does not exist in deployment.
+2. **Unscaled MSE at large Q magnitude.** Rewards ~[0,1] with γ=0.99 over 50 steps ⇒ Q
+   targets approach ~100; squared error there produces very large gradients. Now Huber +
+   gradient-norm clipping.
+3. **No target smoothing.** Hard copy every 5 episodes (~250 gradient steps apart) makes
+   the regression target lurch. Polyak (`tau`) now available.
+
+### 0.2 Empirically settled hyperparameters
+
+From a 15-configuration sweep (`common/analysis/sweep_rl.py --preset screen`), on the
+corrected view. Do not re-litigate these without new evidence:
+
+| knob | finding |
+|---|---|
+| γ | **0.5 ≫ 0.99.** Biggest single lever. The task is near-bandit: reward depends only on the row you land on, never the path. |
+| Double-DQN | slightly **harmful** here; plain DQN wins |
+| dueling head | **harmful** |
+| absolute action space (pick the level directly) | **harmful** |
+| loss | Huber, with grad-clip |
+| lr | 3e-4 marginally better than 1e-3 |
+| width | 256 ≈ 128 |
+
+**Caveat:** every one of these was measured on startup-diluted telemetry. The relative
+ordering is probably robust (it concerns optimisation dynamics, not feature content), but
+re-confirm after re-collection.
+
+### 0.3 Baselines (`common/analysis/baselines.py`)
+
+Steady-state scaled EDP, leave-one-GPU-out, lower is better:
+
+| policy | mean |
+|---|---|
+| oracle (per-workload best) | 0.000 |
+| **fixed clock @ 0.6 × max** | **0.037** |
+| supervised classifier (feature ceiling) | 0.053 |
+| best RL configuration | ~0.069 |
+| **governor (pinned max clock)** | **0.319** |
+| random walk | 0.278 |
+| utilisation heuristic | 0.573 |
+| min clock | 0.819 |
+
+**A fixed 0.6× clock beats every learned policy tested and captures ~88% of the
+oracle's gain over the governor.** Verified leave-one-GPU-out (tuned on training GPUs
+only; picks 0.60 on all 8 folds). This rests only on timing and EDP and is unaffected by
+the telemetry bug. Any adaptive method must clear this bar to have contributed anything.
+
+### 0.4 Deployment (`gpus/rtx3050ti_laptop/deployment/`)
+
+`sim_to_real_deploy.py` — 50 ms loop, `DRY_RUN = True` by default. Layer 1 thermal
+override, Layer 2 `DoNoHarmArbiter` (`arbiter.py`): forces max clock for `ARB_COOLDOWN`
+ticks after `ARB_PATIENCE` consecutive ticks of high SM utilisation while below max clock.
+Watches utilisation rather than reconstructing EDP by dataset lookup, because that lookup
+needs workload-identifying features the 6-feature design excludes. Covered by
+`test_arbiter.py` (7 unit tests) plus a mocked-NVML integration test. **Never run against
+real hardware.**
+
+---
+
+---
+
+> **Sections 1–11 below describe the SUPERSEDED per-card architecture.** They are accurate
+> as of commit `1dbe108` for the two original trees and are retained for the RTX 4500
+> contrast case and for §9's issue list. For the live design read §0 above.
 > **Rule: if it is not in the code or the committed data, it is not a result.**
 
 ---
@@ -445,6 +568,23 @@ root README.
     work (~3.5 % slower); the energy saving must be reported together with that slowdown.
 24. `nw`, the workload used for the RTX 4500 hardware A/B, has a mean utilisation of 17.3 % — a
     light, memory-bound workload, which is the most favourable possible case for downclocking.
+25. **TELEMETRY SAMPLED OVER THE WRONG WINDOW (found 25 Aug 2026, affects every collector in
+    this repo, and every dataset collected before that date).** The NVML sampler ran for the
+    whole benchmark subprocess — interpreter startup, `import torch`, CUDA context creation,
+    typically 2–4 s of idle GPU — while the timed work is often 0.15–0.6 s. Recorded
+    utilisation and power are therefore averages dominated by idle time and encode *how long a
+    workload ran relative to fixed startup cost*, not how hard it drove the GPU. Across the
+    8-GPU fleet: `corr(GPU-only duration, recorded utilisation) = +0.708`; 494/799 points
+    (62 %) report under 9 % utilisation; the highest utilisation anywhere is 64.4 %; dense GEMM
+    (`pt_matmul`) reports 21.7 %. Measured consequence: `core_frac` alone accounts for 0.781 of
+    the 0.812 leave-one-GPU-out accuracy on "is the clock below this workload's optimum?", so
+    the five real telemetry channels contribute ~3 points; 12-way workload identification is
+    0.216 (chance 0.083) and even binary compute-vs-bandwidth regime identification is 0.677.
+    `Avg_Time_S` is **not** affected (it comes from each benchmark's own `Duration:` line).
+    **Fixed** in `common/collect_dataset.py` + all 12 benchmarks (`Window: <start> <end>`
+    markers, `get_stats(window)`); the fix cannot repair already-collected data. This
+    supersedes issue #6, which identified the same class of problem for *timing* on the 3050 Ti
+    tree only. Reproduce: `python common/analysis/telemetry_dilution.py`.
 
 ---
 

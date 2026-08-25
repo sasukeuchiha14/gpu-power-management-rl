@@ -1,357 +1,185 @@
 # context.md — read this first
 
-If you're a new Claude Code session picking this project up, read this file before
-anything else. It's the only file in this repo that's meant to be rewritten every
+If you're a new Claude Code session (or a new person) picking this project up, read this
+file before anything else. It's the only file in this repo meant to be rewritten every
 session — everything else changes slowly.
 
-**Read next, in order:** [NORTHSTAR.md](NORTHSTAR.md) (what we're building, and the
-scorecard) → [CLAUDE.md](CLAUDE.md) (deep technical reference, only as needed).
+**Read next, in order:** [docs/FINDINGS_REPORT.md](docs/FINDINGS_REPORT.md) (what we found,
+what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goal + scorecard) →
+[docs/ONBOARDING.md](docs/ONBOARDING.md) (setup, layout, working agreements) →
+[CLAUDE.md](CLAUDE.md) (deep technical reference, as needed).
+
+**Branch:** `unified-model`. Never push to `main`.
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 24 Aug, end of session): run a real leave-one-GPU-out result
+## IMMEDIATE NEXT STEP (as of 25 Aug 2026): re-collect the fleet with the fixed sampler
 
-**Row 3 of the scorecard is done — 8 GPUs profiled (1 laptop + 7 desktop), well past the
-4+ target.** This session rented 4 GPUs in parallel (RTX 3070, 3090, 3080, then a further
-2 — RTX 4070 Ti and RTX 4070 — as they came online), ran the full `collect_dataset.py`
-pipeline on each via 6 parallel background agents (one per box), audited every result
-against the same 7-check protocol as the RTX 3060 baseline, and committed each as its own
-commit once its audit passed clean:
-- `26ac06c` RTX 3090 — 288/288, 0 skips
-- `b29e3c4` RTX 4090 — 252/288 (36 skips, all the max-core-clock joint-lock ceiling, explained)
-- `ff697fe` RTX 3070 — 288/288, 0 skips
-- `1d0d4df` RTX 3080 — 288/288, 0 skips
-- `af18c04` RTX 4070 — 256/288 (32 skips, same max-clock ceiling pattern, explained)
-- `746003e` RTX 4070 Ti — 288/288, 0 skips
+**Why this and nothing else:** the telemetry columns in all 8 committed datasets are
+contaminated. `collect_dataset.py` sampled NVML across the whole benchmark subprocess —
+interpreter startup, `import torch`, CUDA context creation, typically 2–4 s of idle GPU —
+while the actual timed work is often 0.15–0.6 s. Recorded utilisation/power therefore
+encode how long a workload ran relative to fixed startup cost, not how hard it drove the
+GPU. Measured across the fleet: `corr(GPU-only duration, recorded utilisation) = +0.708`,
+62% of points report under 9% utilisation, the highest utilisation *anywhere* is 64.4%,
+and dense GEMM (`pt_matmul`) reports 21.7%.
 
-Combined with the RTX 3060 from the prior session, that's **7 desktop GPUs across both
-Ampere and Ada generations**, plus the RTX 3050 Ti laptop — 8 total. `NORTHSTAR.md` row 3
-updated to 🟢.
+Those are exactly the features a controller needs to characterise an unknown workload, so
+**every conclusion about telemetry-driven adaptation is currently unanswerable**, not
+negative. `Avg_Time_S` and EDP are unaffected and remain trustworthy.
 
-**Next real step: row 4 (leave-one-GPU-out).** `common/train_unified.py --holdout <gpu>`
-already exists and is verified working end-to-end — it was blocked only on having enough
-compatible datasets, which is now solved. Nobody has actually run a holdout training +
-evaluation yet. That's the next session's job: pick a held-out card (or run it for several
-different holdouts), train on the rest, evaluate on the held-out card's data, and report a
-real number. This is the core scientific claim of the paper — don't let it sit idle now
-that it's unblocked.
+**The collector is already fixed and committed** (all 12 benchmarks emit
+`Window: <start> <end>`; `GPUProfiler.get_stats(window)` averages only in-window samples).
+No code work is needed before renting.
 
-Also worth doing, lower priority: merge `gpu_capability.json` probe snapshots and
-`fleet_survey.csv` rows are already committed per-card; no further probe work needed
-unless more GPUs get rented. The recurring `pip install torchvision transformers`
-silently upgrading torch to an incompatible cu130 build (seen on both RTX 4070 Ti and RTX
-4070 boxes this session, on top of the earlier RTX 3060 mismatch) suggests it may be worth
-pinning `torch==<version>+cu121` and `torchvision==<version>+cu121` together in
-`requirements.txt` explicitly for CUDA-12.x boxes rather than re-discovering this per
-rental — not urgent, but would save a repeated debugging step.
+### Per-instance checklist (proven across 7 rentals)
 
----
-
-## COMPLETED (as of 25 Aug, prior session): rent 4 GPUs in parallel — superseded, see above
-
-User is renting these **4 GPUs simultaneously** right now and will paste in an SSH connect
-line for each as they come up. Run the full pipeline on all 4 **in parallel** (separate
-Bash calls per instance, don't serialize them) — the single-GPU pipeline is already fully
-proven (see the RTX 3060 section below), so there's no reason to do these one at a time.
-
-**The list (RTX 3060 is already done, not on this list):**
-1. **RTX 4070** — needs a **REDO**. It passed `gpu_probe.py` earlier this session but the
-   instance was reclaimed (interruptible) before `collect_dataset.py` ever ran on it — it
-   has NO dataset yet, only a capability-probe result in the fleet survey.
-2. **RTX 3090** (fallback: RTX 3080) — Ampere high-tier, new
-3. **RTX 4060** — Ada low-tier, new
-4. **RTX 4090** — Ada high-tier, new
-
-Together with the RTX 3060 already done, this reaches **5 desktop GPUs total** — the
-target agreed with the user for a real leave-one-GPU-out experiment.
-
-**Per-instance checklist (identical steps proven on the RTX 3060 this session):**
-1. Rent on vast.ai: **VM-type template** ("Ubuntu 22.04 CLI (VM)" or equivalent) — NEVER a
-   container-type template, those deny clock control entirely. Confirm before renting;
-   worth checking the template description says "full virtual machine," not "Docker
-   container."
-2. SSH key is already on the user's vast.ai account (added earlier this session), so it
-   should auto-provision on a fresh instance. Public key, if ever needed again:
-   `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL1ysIECFf0E+PSKu/sycVadq0CKEuJmQxyMpxcEtYsg govindaraj2k5@gmail.com`
-3. Test the SSH connection, confirm it's a genuine VM (hostname `ubuntu`, not a
-   container-ID-looking string; check `uname -a` for a real kernel).
-4. Set up the remote directory and copy files (mirror this exact structure, since
-   `collect_dataset.py`'s path logic depends on it):
+1. Rent on vast.ai: **VM-type template** ("Ubuntu 22.04 CLI (VM)" or equivalent), **never**
+   container-type — containers deny clock control entirely. Prefer **On-Demand**;
+   interruptible instances have been reclaimed mid-run for real.
+2. SSH in, confirm it's a genuine VM (`hostname` = `ubuntu`, real kernel from `uname -a`).
+3. Mirror this exact structure (path logic depends on it):
    ```
    mkdir -p /workspace/repo/common/benchmarks /workspace/repo/gpus/rtx3050ti_laptop/benchmarks
    ```
    then scp `common/gpu_probe.py`, `common/collect_dataset.py`, `common/benchmarks/*.py`,
    and `gpus/rtx3050ti_laptop/benchmarks/*.py` to the matching remote paths.
-5. `pip install --quiet nvidia-ml-py`, then run `python3 gpu_probe.py --survey
-   fleet_survey.csv` FIRST. Confirm `USABLE` before doing anything else on that instance.
-6. **Check the driver's actual supported CUDA version before installing torch** —
-   `nvidia-smi | head -5` shows it in the header. If it's CUDA 13.x, plain `pip install
-   torch` is fine. If it's CUDA 12.x, the default `pip install torch` will grab a CUDA-13
-   build that silently fails (`torch.cuda.is_available()` returns False) — this happened
-   for real on one RTX 3060 instance this session. Install from
-   `https://download.pytorch.org/whl/cu121` instead in that case.
-7. Also `pip install --quiet torchvision transformers` (needed by pt_resnet50, pt_bert,
-   pt_mobilenet, pt_resnet50_train — not needed for `--quick` alone, but needed for the
-   full run). Verify all imports work before launching the long run:
-   `python3 -c "import torch, torchvision, transformers; from torchvision.models import
-   resnet50; from transformers import BertModel"`.
-8. Run `python3 collect_dataset.py --quick` first (a few minutes) as a sanity check, THEN
-   the full run: `nohup python3 -u collect_dataset.py > /workspace/full_run.log 2>&1 &
-   disown` — note the `-u` (unbuffered, so the log is actually readable live) and `nohup`
-   (survives a dropped SSH session). The full run is ~288 points, roughly 2-3.5 hours
-   depending on the workload mix's speed on that card.
-9. Check in periodically (every ~20-25 min is reasonable) via `tail -30
-   /workspace/full_run.log`, `ps aux | grep collect_dataset`, `grep -c SKIP
-   /workspace/full_run.log`. With 4 running in parallel, cycle through checking each.
-10. **On completion, audit before trusting it** — don't just assume it's fine. Pull the CSV
-    back to `gpus/<gpu_slug>/data/`, then check: exact row count (should be 12 workloads x
-    core_levels x usable_mem_levels, mem levels are usually 3 but confirm from that card's
-    own `gpu_probe.py` output), zero duplicate (workload,core,mem) combos, EDP recomputes
-    correctly, all fields in sane ranges, per-workload trends make sense. **Specifically
-    check the file actually HAS a header row** — a real bug from this exact scenario
-    (killing and restarting a buffered launch mid-session) already happened once; the fix
-    is in `collect_dataset.py` now but double-check anyway, it's cheap.
-11. Commit each GPU's dataset as its own commit, update `common/fleet_survey/fleet_survey.csv`
-    if not already done via `--survey`, and add a scorecard-row-3 update in NORTHSTAR.md
-    noting the running total (X of 5+ desktop GPUs done).
+4. `pip install --quiet nvidia-ml-py`, then `python3 gpu_probe.py --survey fleet_survey.csv`.
+   **Confirm `USABLE` before anything else.**
+5. **Check the driver's CUDA version before installing torch** (`nvidia-smi | head -5`).
+   CUDA 13.x → plain `pip install torch` is fine. CUDA 12.x → install from
+   `https://download.pytorch.org/whl/cu121`, and note that a later
+   `pip install torchvision transformers` can silently upgrade torch back to a cu130 build
+   (hit twice) — pin torch+torchvision together and re-verify.
+6. Verify: `python3 -c "import torch, torchvision, transformers; from torchvision.models
+   import resnet50; from transformers import BertModel; print(torch.cuda.is_available())"`
+   must print `True`.
+7. `python3 collect_dataset.py --quick` as a sanity check.
+8. **NEW AND CRITICAL — verify the telemetry fix actually took effect.** In the `--quick`
+   output, `pt_matmul` at high core clock should now report utilisation near saturation
+   (previously ~20%). If it still reports ~20%, the `Window:` markers are not reaching the
+   collector — **stop and debug before burning hours on a full sweep.**
+9. Full run: `nohup python3 -u collect_dataset.py > /workspace/full_run.log 2>&1 & disown`
+   (~2–3.5 h; several cards finished in under 2 h). Check in every ~20–25 min.
+10. On completion, audit before trusting: header present, exact row count
+    (12 workloads × core levels × usable mem levels), zero duplicate (workload, core, mem),
+    EDP recomputes, all fields in physical range, per-workload trends sane, quick-vs-full
+    cross-check. Then pull the CSV to `gpus/<gpu_slug>/data/` and commit per GPU.
 
-**On reclaim/interruption risk:** the RTX 4070 was lost this way earlier this session
-(interruptible instance, reclaimed while idle). Since these are long-running paid rentals
-(hours, in parallel, so real money), lean toward **On-Demand** for these unless the user
-says otherwise — confirmed this in the previous message but re-affirm before committing to
-4 hours-long rentals at once.
+Skips at the top boost bin are expected on Ada cards (4070/4090 could not jointly lock
+3105 MHz with any memory state) — the collector's achieved-clock guard correctly refuses to
+record a mislabelled point. That is not a failure.
 
-**Known-good torch/CUDA state so far:** the RTX 3060 (driver 580.95.05, CUDA 13.0 capable)
-worked with plain `pip install torch`. An earlier different RTX 3060 (driver 575.51.03,
-also CUDA 13.0 per its `nvidia-smi` header) also worked with plain `pip install torch`.
-Only the FIRST torch install attempt (on the 575 driver, before checking `nvidia-smi`'s
-header first) grabbed a mismatched build — checking the header first avoids repeating this.
+### After re-collection
+
+```bash
+python common/preprocess_desktop.py              # add new (slug, driver) pins first
+python common/analysis/telemetry_dilution.py     # confirm the dilution is gone
+python common/analysis/diagnose_features.py      # do features now carry workload signal?
+python common/analysis/baselines.py --loo-tune   # does fixed-0.6 still dominate?
+python common/analysis/sweep_rl.py --preset combos
+```
+
+The decisive question: does telemetry-only regime identification rise well above the current
+0.677 binary accuracy? If yes, adaptation has room to beat the fixed clock. If it stays near
+chance even with clean telemetry, the honest paper claim is that static per-GPU clock
+selection is the right engineering answer — which is itself a useful result.
 
 ---
 
 ## Where we are right now
 
-**Branch:** `unified-model` (all work happens here; `main` is teammates' committed work,
-left untouched unless explicitly asked to merge).
+**8 GPUs profiled** (7 desktop across Ampere + Ada, plus the RTX 3050 Ti laptop), each fully
+audited and committed as its own commit. Scorecard row 3 is done and exceeded.
 
-**The rented-GPU question is answered.** Container-type vast.ai instances deny clock
-control entirely; VM-type instances (e.g. "Ubuntu 22.04 CLI (VM)" template) allow it.
-**Always rent VM-type for profiling, never container-type** — the template listing says
-which it is. Full data in `common/fleet_survey/fleet_survey.csv`.
+**The headline result, robust to everything above:** a fixed clock at **0.6 × max**, using no
+telemetry and no learning, scores **0.037** scaled EDP against the pinned-max-clock
+governor's **0.319** and a per-workload oracle's **0.000** — capturing ~88% of the achievable
+gain and beating every learned policy tested. Verified leave-one-GPU-out (tuned on the 7
+training GPUs only; selects 0.60 on all 8 folds). This rests only on timing and EDP, both
+measured correctly.
 
-**Found and fixed a real bug in `gpu_probe.py` on 25 Aug, mid-session, prompted by the user
-pushing back on an overclaim, then resolved the same day.** `nvidia-smi -lmc`/`-pl` report
-success and print the requested value even when persistence mode is off and the change
-silently never applies — `-lgc` (core) doesn't have this problem, applies immediately
-regardless. The probe originally only checked whether the command was rejected, never
-whether the value actually changed, so it couldn't catch this. Fixed: it now enables
-persistence mode before testing and reads back the achieved value instead of trusting the
-command text, restoring original persistence-mode state after.
+**Leave-one-GPU-out RL is unstable.** A single seed suggested 6/8 wins; a 4-seed sweep cut
+that to **2/8 consistent** (RTX 4070, 4070 Ti), with per-GPU std up to ±186%. Three real RL
+bugs were found and fixed (truncation-treated-as-termination, unscaled MSE at Q≈100, no
+target smoothing) plus a reward-normalisation error (`dataset_view.py`); fixes + tuning
+roughly halved both error and variance. γ 0.99→0.50 was the biggest lever; dueling and
+absolute actions hurt; plain DQN beat Double-DQN.
 
-The original RTX 3060 VM result (mem/power success) was measured with the old buggy probe
-and that instance was already destroyed, so it looked like it could never be re-verified —
-but rented a fresh RTX 3060 (same model) and re-ran the fixed probe on it. **Result: it was
-genuine all along.** Core/mem/power all matched exactly (e.g. memory locked to 7501 MHz,
-requested and achieved identical). Combined with the RTX 4070 (also rigorously confirmed):
-**two desktop cards across two GPU generations (Ampere, Ada) now both properly confirm
-memory-clock and power-limit control.** The evidence is solid now, not just promising.
+**Safety work landed:** the deleted do-no-harm arbiter is restored (redesigned to watch SM
+utilisation rather than reconstruct EDP via dataset lookup, which the 6-feature design
+cannot support), with 7 unit tests + a mocked-NVML integration test. `DRY_RUN` now defaults
+to `True`.
 
-**Still explicitly not changing the core-only action-space design** over this — the mobile
-cards (part of the target product) genuinely can't do memory control regardless, so adding
-it for desktop-only would break having one unified action space. That's a real design
-conversation to have with the user, not something to slip in unilaterally just because the
-data now supports it.
+**Retracted:** an earlier session conclusion that "the 6-feature state is fine, the problem is
+purely RL training." An ablation showed `core_frac` alone explains nearly all of the 81%
+probe accuracy — the telemetry adds ~3 points. See FINDINGS_REPORT §4.
 
-**The full 288-point RTX 3060 dataset is DONE and fully audited (25 Aug).** Both the quick
-test (18 points) and the full run (288 points, 12 workloads x 8 core x 3 memory, zero
-skipped) completed successfully on the On-Demand instance. This is the first complete
-desktop-GPU dataset the project has ever produced, and the first real proof
-`collect_dataset.py` works end-to-end on live hardware, not just in local logic tests.
+---
 
-**Found one more real bug during the full-run audit, root-caused and fixed:** the output
-file was missing its header row. Cause: an early *buffered* launch (killed and replaced
-with an unbuffered one, before the quick test) had already created a 0-byte stub file via
-`open(mode="a")`. The real run's `file_exists = os.path.isfile(...)` check saw that stub
-"existed" and skipped writing the header, so all 288 rows got appended under no header at
-all. **No data was lost** -- confirmed by matching the "malformed header" row's exact
-values against the live log from that data point. Fixed by prepending the correct header,
-and fixed the root cause in `collect_dataset.py` (file_exists now also requires non-empty).
+## Working agreements (don't relitigate)
 
-Ran a full 6-part audit across all 288 rows (not a sample): exact coverage (288 rows, 0
-duplicates, all 12 workloads x 24 rows each), EDP formula verified to 0.06% across every
-row, every field in sane physical range everywhere, per-workload trend sanity (one minor,
-explained non-monotonicity in pt_lstm from subprocess-overhead noise on its very short
-runtime, not a defect), cross-checked against the quicktest for reproducibility (timing
-matched to <0.5% in 11/12 comparisons), and both brand-new workloads behaved sensibly on
-their first-ever real-hardware run. Dataset and the header-bug fix are committed and pushed.
+- **Never push to `main`.** All work goes to `unified-model`.
+- **Never fabricate results**, hyperparameters, hardware specs, baselines, or citations.
+  Flag anything unverified.
+- **Single-seed results are not evidence here.** Multi-seed with variance before reporting.
+- **Sanity-check computed metrics against raw values by hand at least once** — a real bug was
+  caught this way (an averaged-percentage metric hitting −2957% on a near-zero-baseline
+  workload).
+- **The end product is one unified model** (not per-card weight selection). Decided; see
+  NORTHSTAR.md's "why one model".
+- **The RTX 4500 is out of scope** for the product — professional card, kept as a
+  supplementary contrast case only.
+- **On a rented box:** probe first, confirm `USABLE`, report back before hours of paid time.
+- Push access via `gh` already works from this sandbox; no token needed.
 
-**Next: rent 3+ more desktop GPUs** (target list agreed with the user: 3070/3080/3090 for
-Ampere high-tier, 4060 for Ada low-tier, 4090 for Ada high-tier) and run the same
-`collect_dataset.py` full sweep on each, to get enough GPUs for a real leave-one-GPU-out
-test. Consider running some of these in parallel once the single-GPU pipeline is this
-proven -- that was always the plan after one clean full run succeeded.
-
-**Currently running:** the RTX 3060 instance (`ssh -p 61448 root@142.170.96.180`) is still
-up with a complete, audited dataset on it (already pulled locally and committed) -- fine to
-destroy whenever, nothing more needed from it right now.
-
-**Built `common/collect_dataset.py` (25 Aug), the 2D core+memory data collector, plus 2 new
-workloads** (`common/benchmarks/pt_sparse_gather.py`, `pt_transformer_decode.py`, chosen
-from a literature check, not guessed). User explicitly asked for a re-check before handing
-over SSH access -- found and fixed 6 real bugs on that pass, most importantly: the script
-never verified an achieved clock actually matched what it locked, same class of mistake as
-the persistence-mode bug. See git log on `common/collect_dataset.py` for full detail.
-
-**Then found and fixed a SECOND, subtler bug the same day, live on a rented RTX 3060:** the
-readback-verification fix above had a race condition -- reading a clock immediately after
-locking it can catch a stale pre-transition value (measured under 0.5s to settle on one run,
-over 1s on the very next run of the identical script on the same host). A single fixed delay
-can't reliably fix variable settling time. Replaced with `_wait_for_clock()` in
-`gpu_probe.py` -- polls every 0.5s for up to 4s instead of checking once -- used by all three
-gpu_probe.py tests AND imported into collect_dataset.py so both share one fix. Verified with
-4 repeated runs on the same host: 4/4 consistent after the fix (previously flaky).
-
-**Then hit two more real, unresolved things in sequence, on that same RTX 3060 rental:**
-1. The default `pip install torch` grabbed a CUDA-13-built wheel, but the host's driver only
-   supports up to CUDA 12.9 -- `torch.cuda.is_available()` was False, so `--quick` correctly
-   failed all 18 points (the FATAL-on-100%-skip check worked exactly as designed, no silent
-   bad data). Fix identified but not yet completed: install from
-   `https://download.pytorch.org/whl/cu121` instead of the default index.
-2. **The instance got outbid and reclaimed mid-fix** (confirmed directly by the user, not
-   inferred) -- "Connection refused," not a dropped session. This was an Interruptible
-   instance. The actual `--quick` short test run has **still never succeeded end to end** --
-   every attempt so far has been interrupted by something else (bugs found, or the rental
-   dying) before completing cleanly.
-
-**Next step:** rent again. Consider On-Demand this time given the reclaim just happened for
-real, not hypothetically -- ask the user. Once connected: install torch from the cu121 index
-FROM THE START (don't repeat the default-index mismatch), then finally get one clean
-`--quick` run to complete.
-
-**Last session activity:** 23–25 Aug 2026. Set up this doc structure, the shared
-`common/features.py` + `common/gpu_probe.py` modules, connected to and probed five real
-rented GPU instances across the session, found and fully resolved three separate real bugs
-(persistence-mode silent no-op, missing readback verification, and the readback race
-condition above) -- each found by the user pushing back or asking for a recheck, not by
-proactive review alone.
-
-**The 4 items below (found in the 23 Aug full-repo review) are now FIXED — safe to profile
-a new card for real.** Kept here so a fresh session doesn't waste time re-finding them:
-1. ✅ `generate_dataset.py` now derives its core-clock sweep from the connected card's real
-   NVML-reported range (reuses `gpu_probe.py`'s enumeration), falls back to the original
-   literal list only if that fails, and skips (doesn't `sys.exit`) a single bad lock.
-   Output filename is GPU-name-derived so different cards can't collide. Verified live on
-   the GTX 1650 (correctly got its real 300-1740 MHz range) and confirmed the exact
-   original filename/behavior is preserved when it detects the actual 3050 Ti.
-2. ✅ `dvfs_env.py`'s action stride is now inferred from the loaded data's own frequency
-   spacing instead of a hardcoded `100/1400`. Bonus finding: the old hardcoded value was
-   ~50% too large even on the original 3050 Ti, because the real scaler normalizes
-   against `max_core_mhz=2100` (this card's true boost clock) not 1400 — so the shipped
-   laptop policy was trained with a bigger action step than intended, independent of any
-   portability concern.
-3. ✅ **Multi-GPU training now exists.** `common/unified_env.py` (discovers every
-   `gpus/*/data/preprocessed_dataset.csv` matching the 6-feature schema, skips
-   incompatible ones like the RTX 4500's, samples across all of them per episode) +
-   `common/train_unified.py --holdout <gpu>` (leave-one-GPU-out). Verified end-to-end:
-   discovery, the holdout-excludes-only-dataset edge case (raises cleanly), and a real
-   15-episode training run producing correctly-shaped weights + a saved reward curve.
-   **Still can't produce an actual holdout RESULT** — there's only one compatible dataset
-   in the repo, so there's nothing to hold anything out from yet. That's still gated on
-   getting more GPUs profiled (scorecard row 3).
-4. ✅ `requirements.txt` added at repo root (torch, torchvision, gymnasium, pandas, numpy,
-   matplotlib, transformers, nvidia-ml-py).
-
-Also fixed in passing: `train_ddqn.py` (single-GPU trainer) now saves its reward-history
-curve too, closing part of NORTHSTAR.md scorecard row 9.
-
-**Renting alternatives were checked, not assumed:** TensorDock and RunPod are real
-SSH/VM alternatives to vast.ai at similar or slightly higher prices; Salad was ruled out
-despite its low price — it's a container-orchestration platform with no real SSH access,
-wrong model for our interactive workflow. Staying with vast.ai.
-
-## Working agreements from the user (don't relitigate these)
-
-- **Never push to `main`.** All commits go to `unified-model` unless told otherwise.
-- **On a rented GPU box:** run `gpu_probe.py`, report back, wait for go-ahead before a
-  full profiling run. Don't chain straight into hours of paid GPU time on a box that
-  hasn't been checked in on yet.
-- **The end product is one unified model** (Option B from the discussion), not per-card
-  weight selection. See NORTHSTAR.md's "why one model" section if this gets questioned —
-  it's been decided, don't re-open it without new information.
-- **The RTX 4500 is explicitly out of scope for the product** (professional card, not
-  3000/4000 consumer series). It stays in the repo as a supplementary case, not something
-  to migrate to the unified design under time pressure.
-- Push access to GitHub already works from this sandbox via `gh` — no token needed from
-  the user.
+---
 
 ## Doc structure (so it doesn't drift back into one file)
 
 | File | Job | Update cadence |
 |---|---|---|
 | `context.md` | This file. Session handoff: where we are, what's next. | Every session |
-| `NORTHSTAR.md` | End-product definition + 9-row scorecard. Source for the published Artifact. | After any change that moves a scorecard row |
-| `CLAUDE.md` | Deep technical reference: architecture, RL formulation, data notes, file map. | Only when the underlying facts change |
-| `common/features.py` | The 6 canonical state features, action set, CSV schema. Single source of truth for both GPU trees. | Rarely — this is meant to be stable |
-| `common/gpu_probe.py` | Capability probe, run first on any new machine. | Rarely |
+| `docs/FINDINGS_REPORT.md` | What we found, what it means, what to do/experiment next. | When results change |
+| `docs/rl_instability_investigation.md` | Full investigation log, including disproved hypotheses. | Append-only |
+| `docs/ONBOARDING.md` | New-contributor setup, repo layout, working agreements. | Rarely |
+| `docs/CLAUDE_HANDOFF_PROMPT.md` | Copy-paste prompt to start a fresh Claude session. | Rarely |
+| `NORTHSTAR.md` | End-product definition + 9-row scorecard. | After any scorecard move |
+| `CLAUDE.md` | Deep technical reference: architecture, RL formulation, file map. | When facts change |
+| `common/features.py` | The 6 state features, action set, CSV schema. Source of truth. | Rarely |
 
-**Do not let a status block creep back into CLAUDE.md.** If you're tempted to write
-"current status" there, it belongs in this file instead.
+**Do not let a status block creep back into CLAUDE.md.** Status belongs here.
+
+---
 
 ## Open questions nobody has answered yet
 
-- Does clock control actually work inside a rented vast.ai container? (This is *the*
-  question the probe answers — see NORTHSTAR.md's "one thing everything depends on.")
-- How many GPUs, and which models, will actually get rented/borrowed? Determines whether
-  the paper claims cross-*generation* transfer (3000→4000) or has to fall back to
-  cross-*architecture* transfer (Turing→Ampere→Ada) on whatever's physically available.
-- Who fixes the RTX 3050 Ti's deleted do-no-harm arbiter, and when — it's a regression
-  from before this session started, flagged but not yet assigned.
+- **Does telemetry-driven adaptation beat a tuned static clock, once telemetry is measured
+  correctly?** The whole RL premise rides on this. Blocked on re-collection.
+- Is the ~70–90 ms control-loop latency (vs a 50 ms budget) driver round-trip cost or
+  something fixable in our code? Code audit found no obvious Python-side cost; needs a real GPU.
+- Should desktop cards use memory-clock co-control? Currently excluded so laptop and desktop
+  share one action space, but 2/3 of every collected dataset is memory data the core-only
+  controller discards.
+- Who fixes the RTX 3050 Ti tree's remaining pre-existing issues, and when?
+
+---
 
 ## Session log
 
-- **23 Aug 2026** — Reviewed 6 new commits from teammates (A1 timing fix confirmed real
-  and produced a physically coherent EDP gradient; 3 dead workloads dropped; state
-  redesign done on 3050 Ti only). Found the deleted-arbiter regression. Built
-  `common/features.py` + `common/gpu_probe.py`, found and fixed two bugs in the probe
-  itself (nvidia-smi exits 0 on unsupported operations; NVML power-limit call fails on
-  some cards where the CLI still works). Set up this three-file doc structure. Created
-  `unified-model` branch. Verified remote-GPU-access plan is technically sound before the
-  user spends money renting anything.
-- **23 Aug 2026 (same day, follow-up)** — Full re-read of every file before the first
-  rental, at the user's request. Found the 4 items now listed as FIXED above. Also found
-  + fixed 2 more bugs in `gpu_probe.py` itself: it would crash uncaught if a container
-  has no GPU visible at all (real failure mode on misconfigured rentals), and the
-  USABLE/MARGINAL verdict could be wrongly downgraded by a clock-enumeration call failing
-  independently of whether locking actually worked. Both fixed, re-verified live on the
-  GTX 1650 (still correctly reports UNUSABLE without root), committed and pushed
-  (`0e3adff`). Confirmed the RTX 4500 tree's issues (uncaught `sudo` subprocess crashes,
-  hardcoded personal-machine path with a working fallback) don't affect the rental plan
-  since that tree is out of scope for it.
-- **23 Aug 2026 (same day, second follow-up)** — Gave rental instructions (vast.ai
-  step-by-step) and checked alternatives via live web search rather than memory (see
-  above). Then fixed all 4 "before renting for real" items: generalized the collector's
-  clock sweep and made the fatal exit non-fatal, fixed the env's hardcoded action stride
-  (and found it was wrong even on the original hardware — see above), built
-  `common/unified_env.py` + `common/train_unified.py` for multi-GPU / leave-one-GPU-out
-  training, added `requirements.txt`, and added reward-history saving to the existing
-  single-GPU trainer. Everything was actually run and verified (used a throwaway venv on
-  this sandbox with torch/gymnasium/nvidia-ml-py installed), not just read for
-  plausibility — including a real 15-episode training run through the full cross-tree
-  import path. Committed as `727deef` and `ac2da98`, pushed. Updated NORTHSTAR.md rows 4
-  and 9 and republished the artifact to match.
-- **25 Aug 2026 (session end)** — Rented and probed 4 real GPU instances across the
-  session (2x RTX 3060, RTX 4070, and re-tests). Found and fixed 3 separate real bugs in
-  `gpu_probe.py`/`collect_dataset.py`: persistence-mode silent no-op, missing readback
-  verification, and a readback race condition (clocks take a variable, sometimes >1s,
-  amount of time to settle — fixed with a polling helper, `_wait_for_clock`, instead of a
-  fixed delay). Built `common/collect_dataset.py` (the 2D core+memory collector) and 2 new
-  workloads (`pt_sparse_gather`, `pt_transformer_decode`) grounded in a literature check,
-  not guessed. Ran the first-ever full 288-point collection on real hardware (RTX 3060):
-  succeeded, zero skipped points. Found and fixed one more bug during the audit (missing
-  CSV header row, caused by a killed-and-restarted process leaving a stub file behind; no
-  data was lost, confirmed by cross-referencing against the live log). Audited all 288 rows
-  across 6 dimensions, all passed. This is the first complete desktop-GPU dataset the
-  project has ever produced. Ending the session here because context is nearly full;
-  user is renting 4 more GPUs in parallel (RTX 4070 redo, 3090, 4060, 4090) for the next
-  session to run the same pipeline on, in parallel. See "IMMEDIATE NEXT STEP" at the top of
-  this file for the full per-instance checklist.
+- **23 Aug 2026** — Built `common/features.py` + `gpu_probe.py`; found/fixed two probe bugs;
+  created `unified-model`; verified the remote-GPU plan before spending money.
+- **23 Aug 2026 (follow-up)** — Full pre-rental re-read; fixed 4 blocking items (clock-sweep
+  generalisation, hardcoded action stride, multi-GPU training, `requirements.txt`); 2 more
+  probe bugs found and fixed live on a GTX 1650.
+- **25 Aug 2026** — Rented and profiled 6 GPUs in parallel (3070, 3090, 3080, 4070 Ti, 4070,
+  4090), each audited and committed separately. Built `preprocess_desktop.py` (catching a
+  driver-pin bug that would have normalised some cards against the wrong clock ceiling).
+  Ran the first real leave-one-GPU-out result, then a 4-seed sweep that overturned it.
+  Restored the deleted do-no-harm arbiter. Then diagnosed the instability end-to-end: found
+  a crushed reward scale, three RL bugs, a missing baseline suite (fixed-0.6 beats
+  everything), and finally the startup-diluted telemetry root cause. Fixed the collector and
+  all 12 benchmarks. Retracted the earlier "features are fine" conclusion. Wrote
+  `docs/FINDINGS_REPORT.md`, `docs/ONBOARDING.md`, `docs/CLAUDE_HANDOFF_PROMPT.md`, and
+  committed the analysis scripts under `common/analysis/` so every reported number is
+  reproducible from the repo alone.

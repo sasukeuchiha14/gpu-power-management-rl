@@ -13,6 +13,9 @@ numpy
 pandas
 matplotlib
 
+# Analysis scripts under common/analysis/ (supervised probes, feature ablations)
+scikit-learn
+
 # NLP benchmark workload (benchmarks/pt_bert.py)
 transformers
 
