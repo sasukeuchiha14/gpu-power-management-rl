@@ -7,12 +7,22 @@ You are picking up an in-progress research project whose deliverable is a **jour
 ## 1. Get the code
 
 ```bash
-git clone https://github.com/sasukeuchiha14/gpu-power-management-rl.git
+# clone directly into the right branch (-b unified-model)
+git clone -b unified-model https://github.com/sasukeuchiha14/gpu-power-management-rl.git
 cd gpu-power-management-rl
-git checkout unified-model
+
+git branch --show-current      # must print: unified-model
 ```
 
-> **Work on `unified-model`, never `main`.** `main` holds older teammate work under a superseded architecture. All current work is on `unified-model`.
+**If you already cloned and landed on `main`:**
+
+```bash
+git fetch origin
+git switch unified-model       # older git: git checkout unified-model
+git branch --show-current
+```
+
+> **Work on `unified-model`, never `main`.** `main` holds older teammate work under a superseded architecture — different state design, different results, none of the work described in these docs. If `git branch --show-current` prints anything other than `unified-model`, stop and fix that before reading further, or nothing below will match what you see.
 
 ## 2. Environment
 
@@ -38,11 +48,11 @@ The first should report `corr(GPU-only duration, recorded utilisation) = +0.708`
 
 | # | File | Why |
 |---|---|---|
-| 1 | [`../context.md`](../context.md) | Where we are right now and what to do next. Rewritten every session. |
+| 1 | [`../context.md`](../../context.md) | Where we are right now and what to do next. Rewritten every session. |
 | 2 | [`FINDINGS_REPORT.md`](FINDINGS_REPORT.md) | What we found, what it means, what to change and experiment with. **The main document.** |
-| 3 | [`../NORTHSTAR.md`](../NORTHSTAR.md) | The end-goal definition and the 9-row scorecard that decides whether work is on the critical path. |
+| 3 | [`../NORTHSTAR.md`](../../NORTHSTAR.md) | The end-goal definition and the 9-row scorecard that decides whether work is on the critical path. |
 | 4 | [`rl_instability_investigation.md`](rl_instability_investigation.md) | The full investigation log, including hypotheses the data disproved. Read before re-deriving anything. |
-| 5 | [`../CLAUDE.md`](../CLAUDE.md) | Deep technical reference: RL formulation, architecture, file map, known issues. Consult as needed. |
+| 5 | [`../CLAUDE.md`](../../CLAUDE.md) | Deep technical reference: RL formulation, architecture, file map, known issues. Consult as needed. |
 
 ## 5. The two things most likely to trip you up
 

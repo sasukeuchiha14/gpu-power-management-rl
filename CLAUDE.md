@@ -3,7 +3,7 @@
 > **This is the deep technical reference — architecture, RL formulation, data notes.**
 > For current status and what to do next read **[context.md](context.md) first, always**.
 > For what we found and what to do about it, read
-> **[docs/FINDINGS_REPORT.md](docs/FINDINGS_REPORT.md)**. For the end-product definition and
+> **[docs/handoff-2026-08-25/FINDINGS_REPORT.md](docs/handoff-2026-08-25/FINDINGS_REPORT.md)**. For the end-product definition and
 > the scorecard, see **[NORTHSTAR.md](NORTHSTAR.md)**.
 
 > ## ⚠️ READ THIS BEFORE TRUSTING ANYTHING BELOW

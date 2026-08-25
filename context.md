@@ -4,9 +4,9 @@ If you're a new Claude Code session (or a new person) picking this project up, r
 file before anything else. It's the only file in this repo meant to be rewritten every
 session — everything else changes slowly.
 
-**Read next, in order:** [docs/FINDINGS_REPORT.md](docs/FINDINGS_REPORT.md) (what we found,
+**Read next, in order:** [docs/handoff-2026-08-25/FINDINGS_REPORT.md](docs/handoff-2026-08-25/FINDINGS_REPORT.md) (what we found,
 what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goal + scorecard) →
-[docs/ONBOARDING.md](docs/ONBOARDING.md) (setup, layout, working agreements) →
+[docs/handoff-2026-08-25/ONBOARDING.md](docs/handoff-2026-08-25/ONBOARDING.md) (setup, layout, working agreements) →
 [CLAUDE.md](CLAUDE.md) (deep technical reference, as needed).
 
 **Branch:** `unified-model`. Never push to `main`.
@@ -140,10 +140,10 @@ probe accuracy — the telemetry adds ~3 points. See FINDINGS_REPORT §4.
 | File | Job | Update cadence |
 |---|---|---|
 | `context.md` | This file. Session handoff: where we are, what's next. | Every session |
-| `docs/FINDINGS_REPORT.md` | What we found, what it means, what to do/experiment next. | When results change |
-| `docs/rl_instability_investigation.md` | Full investigation log, including disproved hypotheses. | Append-only |
-| `docs/ONBOARDING.md` | New-contributor setup, repo layout, working agreements. | Rarely |
-| `docs/CLAUDE_HANDOFF_PROMPT.md` | Copy-paste prompt to start a fresh Claude session. | Rarely |
+| `docs/handoff-2026-08-25/FINDINGS_REPORT.md` | What we found, what it means, what to do/experiment next. | When results change |
+| `docs/handoff-2026-08-25/rl_instability_investigation.md` | Full investigation log, including disproved hypotheses. | Append-only |
+| `docs/handoff-2026-08-25/ONBOARDING.md` | New-contributor setup, repo layout, working agreements. | Rarely |
+| `docs/handoff-2026-08-25/CLAUDE_HANDOFF_PROMPT.md` | Copy-paste prompt to start a fresh Claude session. | Rarely |
 | `NORTHSTAR.md` | End-product definition + 9-row scorecard. | After any scorecard move |
 | `CLAUDE.md` | Deep technical reference: architecture, RL formulation, file map. | When facts change |
 | `common/features.py` | The 6 state features, action set, CSV schema. Source of truth. | Rarely |
@@ -180,6 +180,6 @@ probe accuracy — the telemetry adds ~3 points. See FINDINGS_REPORT §4.
   a crushed reward scale, three RL bugs, a missing baseline suite (fixed-0.6 beats
   everything), and finally the startup-diluted telemetry root cause. Fixed the collector and
   all 12 benchmarks. Retracted the earlier "features are fine" conclusion. Wrote
-  `docs/FINDINGS_REPORT.md`, `docs/ONBOARDING.md`, `docs/CLAUDE_HANDOFF_PROMPT.md`, and
+  `docs/handoff-2026-08-25/FINDINGS_REPORT.md`, `docs/handoff-2026-08-25/ONBOARDING.md`, `docs/handoff-2026-08-25/CLAUDE_HANDOFF_PROMPT.md`, and
   committed the analysis scripts under `common/analysis/` so every reported number is
   reproducible from the repo alone.

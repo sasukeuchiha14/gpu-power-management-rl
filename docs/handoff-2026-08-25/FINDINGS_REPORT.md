@@ -2,7 +2,7 @@
 
 **Last updated:** 25 August 2026 · **Branch:** `unified-model` · **Status:** results are honest and reproducible, but one central question is currently *unanswerable* on the committed data (see §4).
 
-This is the document to read if you want to know **what we found, what it means, and what to do next**. For the blow-by-blow investigation log including hypotheses that were disproved, see [`rl_instability_investigation.md`](rl_instability_investigation.md). For the deep technical reference, see [`../CLAUDE.md`](../CLAUDE.md). For the end-goal definition and scorecard, see [`../NORTHSTAR.md`](../NORTHSTAR.md).
+This is the document to read if you want to know **what we found, what it means, and what to do next**. For the blow-by-blow investigation log including hypotheses that were disproved, see [`rl_instability_investigation.md`](rl_instability_investigation.md). For the deep technical reference, see [`../CLAUDE.md`](../../CLAUDE.md). For the end-goal definition and scorecard, see [`../NORTHSTAR.md`](../../NORTHSTAR.md).
 
 ---
 
@@ -168,7 +168,7 @@ All 12 benchmarks now emit `Window: <start> <end>` around their measured region 
 The single highest-value action. Everything about cross-GPU adaptation is blocked on it.
 
 * The collector is already fixed and committed; no code work needed first.
-* Follow the per-instance checklist in [`../context.md`](../context.md) (VM-type vast.ai instances only; container templates deny clock control).
+* Follow the per-instance checklist in [`../context.md`](../../context.md) (VM-type vast.ai instances only; container templates deny clock control).
 * Re-running 6-8 GPUs takes roughly 2 hours each, and they parallelise — the previous session ran 6 simultaneously.
 * **Sanity check before trusting any run:** `pt_matmul` at max clock should now report utilisation near saturation. If it still reports ~20%, the window markers are not reaching the collector — stop and debug rather than collecting a full sweep.
 * Consider adding a small number of *longer-running* workload variants so startup is a smaller fraction of each measurement even in the worst case.

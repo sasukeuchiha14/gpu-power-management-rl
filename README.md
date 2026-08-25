@@ -2,7 +2,26 @@
 
 Learning a **single** DVFS (Dynamic Voltage and Frequency Scaling) policy that sets GPU core clock at runtime to minimise **Energy-Delay Product** (EDP = Power × Time²), reads only live NVML telemetry, and runs unmodified on any RTX 3000/4000 consumer GPU — *including cards it never trained on*.
 
-> **Working branch: `unified-model`.** `main` holds older teammate work under a superseded architecture. New contributors: start with **[docs/ONBOARDING.md](docs/ONBOARDING.md)**.
+## ⚠️ Clone the `unified-model` branch, not `main`
+
+`main` holds older teammate work under a superseded architecture. **All current work is on `unified-model`.**
+
+```bash
+# clone straight into the right branch
+git clone -b unified-model https://github.com/sasukeuchiha14/gpu-power-management-rl.git
+cd gpu-power-management-rl
+```
+
+<details><summary>Already cloned and got <code>main</code>?</summary>
+
+```bash
+git fetch origin
+git checkout unified-model      # or: git switch unified-model
+git branch --show-current       # must print: unified-model
+```
+</details>
+
+**New here? Start with the handoff bundle:** **[docs/handoff-2026-08-25/](docs/handoff-2026-08-25/)** — it has the reading order, the results, and a copy-paste prompt for starting a Claude Code session.
 
 ---
 
@@ -61,9 +80,9 @@ Reproduce: `python common/analysis/telemetry_dilution.py`
 ## Quickstart
 
 ```bash
-git clone https://github.com/sasukeuchiha14/gpu-power-management-rl.git
+git clone -b unified-model https://github.com/sasukeuchiha14/gpu-power-management-rl.git
 cd gpu-power-management-rl
-git checkout unified-model
+git branch --show-current          # sanity check: must print "unified-model"
 
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
@@ -92,14 +111,16 @@ python common/analysis/sweep_rl.py --preset screen     # which knobs actually he
 
 ## Documentation
 
+**📦 [docs/handoff-2026-08-25/](docs/handoff-2026-08-25/) — the handoff bundle.** Start there; it has the reading order and links everything below.
+
 | Read | For |
 |---|---|
 | **[context.md](context.md)** | Where the project is right now and what to do next. Rewritten every session. |
-| **[docs/FINDINGS_REPORT.md](docs/FINDINGS_REPORT.md)** | What we found, what it means, what to change and experiment with. **The main document.** |
+| **[docs/handoff-2026-08-25/FINDINGS_REPORT.md](docs/handoff-2026-08-25/FINDINGS_REPORT.md)** | What we found, what it means, what to change and experiment with. **The main document.** |
 | **[NORTHSTAR.md](NORTHSTAR.md)** | End-goal definition + the 11-row scorecard that decides what's on the critical path. |
-| [docs/rl_instability_investigation.md](docs/rl_instability_investigation.md) | Full investigation log, including hypotheses the data disproved. |
-| [docs/ONBOARDING.md](docs/ONBOARDING.md) | New-contributor setup, repo layout, working agreements. |
-| [docs/CLAUDE_HANDOFF_PROMPT.md](docs/CLAUDE_HANDOFF_PROMPT.md) | Copy-paste prompt to start a fresh Claude Code session on this project. |
+| [docs/handoff-2026-08-25/rl_instability_investigation.md](docs/handoff-2026-08-25/rl_instability_investigation.md) | Full investigation log, including hypotheses the data disproved. |
+| [docs/handoff-2026-08-25/ONBOARDING.md](docs/handoff-2026-08-25/ONBOARDING.md) | New-contributor setup, repo layout, working agreements. |
+| [docs/handoff-2026-08-25/CLAUDE_HANDOFF_PROMPT.md](docs/handoff-2026-08-25/CLAUDE_HANDOFF_PROMPT.md) | Copy-paste prompt to start a fresh Claude Code session on this project. |
 | [CLAUDE.md](CLAUDE.md) | Deep technical reference: architecture, RL formulation, file map, known issues. |
 
 ---
@@ -142,14 +163,14 @@ gpus/<gpu_slug>/data/      one folder per profiled GPU (8 of them)
 gpus/rtx3050ti_laptop/     laptop tree: benchmarks, deployment daemon, arbiter
 gpus/rtx4500_ada/          older professional-card tree — out of scope, kept as contrast case
 docs/                      reports, investigation logs, onboarding
-docs/results/              CSV outputs from the analysis scripts
+docs/handoff-2026-08-25/results/              CSV outputs from the analysis scripts
 ```
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for hardware-safety rules (always `DRY_RUN` first; the thermal override stays on) and [docs/ONBOARDING.md](docs/ONBOARDING.md) for working agreements. In short: work on `unified-model`, never push to `main`, never fabricate a result, and treat single-seed RL numbers as not-yet-evidence.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for hardware-safety rules (always `DRY_RUN` first; the thermal override stays on) and [docs/handoff-2026-08-25/ONBOARDING.md](docs/handoff-2026-08-25/ONBOARDING.md) for working agreements. In short: work on `unified-model`, never push to `main`, never fabricate a result, and treat single-seed RL numbers as not-yet-evidence.
 
 ## License
 
