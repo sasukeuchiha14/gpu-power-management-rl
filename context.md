@@ -13,7 +13,36 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 25 Aug 2026): re-collect the fleet with the fixed sampler
+## IMMEDIATE NEXT STEP (as of 3 Oct 2026): finish re-collecting the fleet
+
+**5 of 7 desktop GPUs re-collected and committed** (RTX 3060, 3070, 3080, 3090, 4090;
+commit `8e90f12`), each audited clean (exact row counts, zero duplicates, zero EDP
+mismatches, zero physically-invalid rows). `pt_matmul` peak utilisation now reaches
+48-89% on these cards vs the old fleet's 21.7% ceiling -- the fix is confirmed working
+on real hardware, not just the synthetic trace in `telemetry_dilution.py`.
+
+**Still needed:** RTX 4070, RTX 4070 Ti (rentable, not yet re-done), and the RTX 3050 Ti
+laptop (physical machine, not rentable -- re-collect locally with
+`python common/collect_dataset.py`). Until all 8 are done, `diagnose_features.py` and
+`baselines.py --loo-tune` are reading a **mixed fleet** (5 fixed + 2-3 still diluted) and
+their numbers are not yet trustworthy either way -- a first read gave binary regime ID
+0.595 (vs the old, now-suspect 0.677), which is not a verdict, just an artifact of mixing
+two different data-generating processes across the leave-one-GPU-out folds.
+
+**Two new driver-pin bugs found and fixed during this re-collection** (both the exact
+class `preprocess_desktop.py`'s docstring already warned about, now actually hit): a
+rental can report the *same* driver string as a previous one but have different real
+hardware limits (RTX 3060: 2145 -> 2190 MHz core; RTX 3090: 390 -> 350 W power limit,
+same driver both times). Disambiguated with synthetic driver-key suffixes in
+`fleet_survey.csv`. Added a power-limit sanity check to `preprocess_one()` mirroring the
+existing core-clock one, since the 3090 case would **not** have been caught by any
+automated check before this -- only by manually diffing a fresh probe survey against the
+committed row. Do this diff-check explicitly for every future re-collection, not just
+when a driver string changes.
+
+---
+
+## Prior next step (25 Aug 2026, superseded above): re-collect the fleet with the fixed sampler
 
 **Why this and nothing else:** the telemetry columns in all 8 committed datasets are
 contaminated. `collect_dataset.py` sampled NVML across the whole benchmark subprocess —
@@ -183,3 +212,20 @@ probe accuracy — the telemetry adds ~3 points. See FINDINGS_REPORT §4.
   `docs/handoff-2026-08-25/FINDINGS_REPORT.md`, `docs/handoff-2026-08-25/ONBOARDING.md`, `docs/handoff-2026-08-25/CLAUDE_HANDOFF_PROMPT.md`, and
   committed the analysis scripts under `common/analysis/` so every reported number is
   reproducible from the repo alone.
+- **3 Oct 2026** — Rented and re-collected 5 of 7 desktop GPUs (3060, 3070, 3080, 3090,
+  4090) in parallel with the fixed window-scoped sampler, each audited (header, exact row
+  count, zero duplicates, EDP recompute, physical-range, `pt_matmul` peak utilisation) and
+  committed (`8e90f12`). Confirmed the fix live on real hardware before trusting any full
+  sweep: instrumented a direct window-vs-whole-process comparison on the RTX 3090 showing
+  the `Window:` marker correctly reaching the collector (span matched benchmark duration
+  exactly) -- the one near-0% reading that looked alarming at first (`pt_matmul` at max
+  clock, 3 samples in a 145ms window) turned out to be the already-documented
+  short-workload sampling-noise limitation, not dilution recurring. Found and fixed two new
+  driver-pin bugs (RTX 4090's new rental on a different driver with a different core
+  ceiling; RTX 3060 and RTX 3090's new rentals reporting the *same* driver string as the
+  original units but different real hardware limits -- core ceiling and power limit
+  respectively). Added a power-limit sanity check to `preprocess_desktop.py` mirroring the
+  existing core-clock one. Still need: RTX 4070, RTX 4070 Ti (rentable), RTX 3050 Ti laptop
+  (physical, local re-collection). Fleet-wide `diagnose_features.py` read on the mixed
+  5-fixed/3-old fleet is not yet conclusive either way -- do not cite it until the fleet is
+  complete.
