@@ -13,7 +13,7 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 3 Oct 2026): finish re-collecting the fleet
+## IMMEDIATE NEXT STEP (as of 4 Oct 2026): rent 4070/4070 Ti when available; redo laptop
 
 **5 of 7 desktop GPUs re-collected and committed** (RTX 3060, 3070, 3080, 3090, 4090;
 commit `8e90f12`), each audited clean (exact row counts, zero duplicates, zero EDP
@@ -21,13 +21,24 @@ mismatches, zero physically-invalid rows). `pt_matmul` peak utilisation now reac
 48-89% on these cards vs the old fleet's 21.7% ceiling -- the fix is confirmed working
 on real hardware, not just the synthetic trace in `telemetry_dilution.py`.
 
-**Still needed:** RTX 4070, RTX 4070 Ti (rentable, not yet re-done), and the RTX 3050 Ti
-laptop (physical machine, not rentable -- re-collect locally with
-`python common/collect_dataset.py`). Until all 8 are done, `diagnose_features.py` and
+**The headline question has a first, partial answer: RL still does not beat a fixed
+clock, even with clean telemetry.** Run on just the 5 clean GPUs (RTX 4070/4070 Ti were
+unavailable to rent, laptop deferred -- see NORTHSTAR row 11 for the full numbers): best
+RL config scores 0.038 mean scaled EDP vs fixed-clock's 0.025-0.031 on the identical 5
+GPUs, and wins on only 1 of 5 individual cards. **This is evidence, not yet a verdict** --
+still only 5 of 8 target GPUs, and the fixed-clock tuning itself was less stable on this
+smaller set (picked 0.55-0.70 across folds, not the consistent 0.60 the 7-GPU fleet gave).
+Re-run `sweep_rl.py --preset combos` once 4070/4070 Ti/laptop are added back.
+
+**Still needed:** RTX 4070, RTX 4070 Ti (rentable, unavailable as of 4 Oct 2026 -- retry
+later), and the RTX 3050 Ti laptop (physical machine, not rentable -- re-collect locally
+with `python common/collect_dataset.py`). Until all 8 are done, `diagnose_features.py` and
 `baselines.py --loo-tune` are reading a **mixed fleet** (5 fixed + 2-3 still diluted) and
-their numbers are not yet trustworthy either way -- a first read gave binary regime ID
-0.595 (vs the old, now-suspect 0.677), which is not a verdict, just an artifact of mixing
-two different data-generating processes across the leave-one-GPU-out folds.
+their fleet-wide numbers are not yet trustworthy either way -- a first mixed-fleet read
+gave binary regime ID 0.595 (vs the old, now-suspect 0.677), which is not a verdict, just
+an artifact of mixing two different data-generating processes across the leave-one-GPU-out
+folds. (The 5-GPU-only RL sweep above sidesteps this by excluding the stale GPUs entirely,
+which is why it's trustworthy as far as it goes.)
 
 **Two new driver-pin bugs found and fixed during this re-collection** (both the exact
 class `preprocess_desktop.py`'s docstring already warned about, now actually hit): a
@@ -229,3 +240,19 @@ probe accuracy — the telemetry adds ~3 points. See FINDINGS_REPORT §4.
   (physical, local re-collection). Fleet-wide `diagnose_features.py` read on the mixed
   5-fixed/3-old fleet is not yet conclusive either way -- do not cite it until the fleet is
   complete.
+- **4 Oct 2026** — RTX 4070/4070 Ti unavailable to rent and the laptop deferred, so ran the
+  decisive comparison on just the 5 clean GPUs instead of waiting: does RL beat a fixed
+  clock now that telemetry is real? **No.** `sweep_rl.py --preset combos` (5 configs x 3
+  seeds x 5 GPUs, ~77 min) gave a best RL mean of 0.038 scaled EDP, still worse than fixed
+  0.5/0.6/0.7 (0.031/0.025/0.027) on the identical 5-GPU set, and RL only won on 1 of 5
+  individual cards (3090) -- checked per-GPU specifically because this project has been
+  burned before by a good-looking aggregate mean hiding an inconsistent per-GPU pattern.
+  **Conclusion: telemetry dilution was not masking a hidden RL win.** Updated NORTHSTAR row
+  11 with this. Also found and fixed a real crash in `baselines.py --loo-tune` (embedded the
+  picked fixed-clock value into a dict key, which breaks the moment two leave-one-out folds
+  pick different values -- happened on this 5-GPU set: 0.55-0.70 across folds, vs. a
+  consistent 0.60 on the original 7-GPU fleet, itself a real finding about fleet-size
+  sensitivity, not noise). Sweep output committed at
+  `docs/results/sweep_combos_5gpu_partial_2026-10-04.csv`. Confirmed with the user that
+  RTX 4070, RTX 4070 Ti, and the laptop are being set aside for now; this 5-GPU reading is
+  the working number until/unless those become available again.
