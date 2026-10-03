@@ -54,13 +54,31 @@ _fleet_survey_csv = os.path.join(_repo_root, "common", "fleet_survey", "fleet_su
 # slug -> driver version that actually produced that slug's committed dataset.
 # See module docstring for why this can't be auto-matched from fleet_survey.csv.
 DRIVER_PIN = {
-    "nvidia_geforce_rtx_3060":     "580.95.05",  # cross-checked: max Core_F in data == 2145.0, this row's max_core_mhz exactly
+    # 3060 re-collected 3 Oct 2026 on a different physical rental unit that happens to
+    # report the SAME driver string (580.95.05) as the original one, but a genuinely
+    # different factory boost ceiling (2190 MHz vs the original unit's 2145 MHz) -- i.e.
+    # (gpu_name, driver) is not actually a unique key across physical units, only across
+    # driver versions. Disambiguated with a synthetic suffix on the survey row itself
+    # rather than letting two same-keyed rows collide silently in _load_hardware_limits().
+    "nvidia_geforce_rtx_3060":     "580.95.05-unitB",  # cross-checked: max Core_F in data == 2190.0
     "nvidia_geforce_rtx_3070":     "580.95.05",
-    "nvidia_geforce_rtx_3080":     "580.95.05",
-    "nvidia_geforce_rtx_3090":     "580.95.05",
+    # 3080/4090 re-collected 3 Oct 2026 on a fresh rental running 575.51.03, not the
+    # original 580.95.05 instance -- the old dataset rows were replaced, not merged, so
+    # the pin must follow. Verified the ceiling actually differs for 4090 (3105 -> 3135
+    # MHz across drivers; 3080's is coincidentally identical at 2100) -- this is a real
+    # case of the exact bug class this module's docstring warns about, not a formality.
+    "nvidia_geforce_rtx_3080":     "575.51.03",
+    # 3090 re-collected 3 Oct 2026: same driver string (580.95.05) and same core ceiling
+    # (2130 MHz) as the original unit, but a different power_limit_w (350 vs 390 W) --
+    # power_frac = power_w / hw["power_limit_w"] in features.py, so this would have
+    # silently mis-normalised every power reading by ~11% if left pinned to the old row.
+    # The existing sanity check in preprocess_one() only validates core clock, not power
+    # limit, so this one would NOT have been caught automatically -- found by manually
+    # diffing the fresh probe survey against the committed row before trusting it.
+    "nvidia_geforce_rtx_3090":     "580.95.05-unitB",
     "nvidia_geforce_rtx_4070":     "580.95.05",
     "nvidia_geforce_rtx_4070_ti":  "575.51.03",
-    "nvidia_geforce_rtx_4090":     "580.95.05",
+    "nvidia_geforce_rtx_4090":     "575.51.03",
 }
 
 EXCLUDE_SLUGS = {"rtx3050ti_laptop", "rtx4500_ada"}  # have their own preprocess.py, not ours to touch
@@ -137,6 +155,25 @@ def preprocess_one(slug, csv_path, hw_limits_by_key, strict=True):
     if observed_max_core > hw["max_core_mhz"] * 1.02:
         msg = (f"[{slug}] observed max Core_F ({observed_max_core}) exceeds pinned "
                f"max_core_mhz ({hw['max_core_mhz']}) by >2% -- DRIVER_PIN is probably "
+               f"wrong for this slug.")
+        if strict:
+            raise ValueError(msg)
+        print("WARNING:", msg)
+
+    # Sanity check: observed power can't physically exceed the true power cap
+    # by more than measurement noise. Catches a pinned power_limit_w that's
+    # too LOW for this dataset (found 3 Oct 2026: the RTX 3090 re-collection
+    # used a rental with a genuinely lower power_limit_w than the original
+    # pinned row -- same driver string, same core ceiling, different power
+    # cap). NOTE: this only catches the "pin too low" direction -- a pin
+    # that's too HIGH produces no physically-impossible value, just silently
+    # compressed power_frac features, and isn't caught by any automated check
+    # here. That direction must still be caught by diffing a fresh gpu_probe.py
+    # survey against the committed fleet_survey.csv row before trusting it.
+    observed_max_pwr = df["Avg_Pwr_W"].max()
+    if observed_max_pwr > hw["power_limit_w"] * 1.05:
+        msg = (f"[{slug}] observed max Avg_Pwr_W ({observed_max_pwr:.1f}) exceeds pinned "
+               f"power_limit_w ({hw['power_limit_w']}) by >5% -- DRIVER_PIN is probably "
                f"wrong for this slug.")
         if strict:
             raise ValueError(msg)
