@@ -81,6 +81,7 @@ def main():
     }
 
     res = {g: {} for g in ALL}
+    tuned_picks = {}
     for g in ALL:
         for name, pol in policies.items():
             res[g][name] = P.evaluate_policy(PREP[g], pol)[1]
@@ -88,8 +89,17 @@ def main():
             res[g]["supervised RF (ceiling)"] = P.evaluate_policy(
                 PREP[g], P.p_supervised(supervised_clf(DS, g)))[1]
         if a.loo_tune:
+            # NOTE: the picked value f can legitimately differ per held-out GPU
+            # (it did, running on a 5-GPU subset -- the original 7-GPU fleet
+            # picked 0.60 on all folds, but that's an empirical fact about that
+            # fleet, not a guarantee). Keep the result key constant across GPUs
+            # and track the picked value separately -- embedding f in the key
+            # string made every GPU's dict have a different key whenever f
+            # differed, which crashed the table-printing step below with a
+            # KeyError the moment two folds disagreed (found 3 Oct 2026).
             f = tune_fixed_loo(PREP, ALL, g)
-            res[g][f"fixed, tuned LOO (picked {f:.2f})"] = P.evaluate_policy(PREP[g], P.p_fixed(f))[1]
+            tuned_picks[g] = f
+            res[g]["fixed, tuned LOO"] = P.evaluate_policy(PREP[g], P.p_fixed(f))[1]
 
     names = list(next(iter(res.values())).keys())
     short = lambda g: g.replace("nvidia_geforce_rtx_", "").replace("rtx3050ti_laptop", "lap")
@@ -101,6 +111,13 @@ def main():
         v = [res[g][n] for g in ALL]
         rows.append(dict(policy=n, **{g: res[g][n] for g in ALL}, mean=float(np.mean(v))))
         print(f"{n:<32}" + "".join(f"{x:>8.3f}" for x in v) + f"{np.mean(v):>9.3f}")
+
+    if a.loo_tune:
+        picks = ", ".join(f"{short(g)}={v:.2f}" for g, v in tuned_picks.items())
+        same = len(set(tuned_picks.values())) == 1
+        print(f"\ntuned fixed clock picked per held-out GPU: {picks}")
+        print("-> consistent across all folds, not hindsight fitting." if same else
+              "-> NOT consistent across folds -- the single-best-constant story is weaker on this fleet.")
 
     out = f"{REPO}/docs/results/baselines.csv"
     import os; os.makedirs(os.path.dirname(out), exist_ok=True)
