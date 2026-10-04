@@ -1,0 +1,21 @@
+{
+  "gpu_name": "NVIDIA GeForce RTX 4090",
+  "driver": "580.95.05",
+  "platform": "linux",
+  "hardware_limits": {
+    "max_core_mhz": 3135.0,
+    "max_mem_mhz": 10501.0,
+    "power_limit_w": 450.0,
+    "slowdown_temp_c": 99.0,
+    "total_vram_mb": 24564.0
+  },
+  "core_levels": 194,
+  "core_min_mhz": 240,
+  "core_max_mhz": 3135,
+  "memory_states": 5,
+  "core_lock": true,
+  "mem_lock": true,
+  "power_limit": true,
+  "usable": true,
+  "verified_readback": true
+}

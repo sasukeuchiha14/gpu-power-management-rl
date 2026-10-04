@@ -13,14 +13,108 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 4 Oct 2026, night): Phase 1 checkpoint PASSED, decided to proceed to Phase 2
+## IMMEDIATE NEXT STEP (as of 4 Oct 2026, late night): Phase 2 hardware validation DONE -- real, honest, two-sided result
 
-**Phase 1 (response-aware state augmentation) is done. 10-seed result (see below): the
-response features turn "beats a tuned fixed clock" from close to a coin flip into a reliable
-5/5-GPU win with tight variance. Not the dramatic 4.7x the 4 Oct hand-coded hill-climb claimed
-(that doesn't reproduce -- see point 3 below) but a real, statistically solid effect
-(p≈0.00015 on the paired comparison). Decision: proceed to Phase 2 (hardware validation,
-VM rental) -- this checkpoint looks right.**
+**Phase 2 (hardware validation) is complete. Deployed the trained response-aware DDQN
+(RTX 4090 holdout checkpoint) as a real control loop against a rented RTX 4090, driving an
+actual continuous workload, with real NVML clock locking and real measured power/throughput
+-- not simulated. Two conditions tested, and they tell an honest, two-sided story: the
+system works cleanly when the policy's read of the situation matches reality, and is
+over-aggressive (propped up by the safety arbiter) when it doesn't. Root cause for the second
+case is identified and well-evidenced, not guessed -- see below.**
+
+### Hardware setup notes (useful for next time)
+- **vast.ai rental is a lottery for the one thing that matters: Docker privilege for clock
+  locking.** `common/gpu_probe.py`'s verdict varied across 9 rentals of nominally the same
+  "Ubuntu 22.04 VM" template: some got `insufficient permission` on core/mem/power-limit lock
+  (container lacks privileges), one had a CUDA-context-init hang that `gpu_probe.py` cannot
+  catch (it only tests NVML, not actual CUDA init -- catch this with a bounded
+  `ctypes.CDLL("libcuda.so").cuInit(0)` call under `timeout`, not a full torch import).
+  Renting via vast.ai's own website console worked more often than `vastai create instance`
+  from the CLI (which has no apparent equivalent of whatever privilege flag the console sets).
+  **Always smoke-test fast before investing setup time**: bandwidth (`curl` a large file,
+  bounded), raw CUDA init (bounded `cuInit`), and `gpu_probe.py` -- all three, in under 30s,
+  before installing anything. One host had working privileges but was network-broken (SSH
+  connections would silently die mid-transfer); don't assume "probe passed" means "usable."
+- **PyPI/Fastly can be severely throttled on some hosts** (measured 3-40 KB/s on one host,
+  independent of parallelism -- a host-level bandwidth shape, not fixable client-side).
+  `download.pytorch.org` (a different CDN) was consistently 30-100x faster on every host
+  tested. Install torch via
+  `pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121` (bundles
+  CUDA in one wheel, routed through the fast path), not bare `pip install torch` (pulls many
+  separate `nvidia-cu*` packages, each hitting the slow path individually).
+- `nohup`'d background commands over SSH can make the SSH session itself hang even though the
+  backgrounded command is running fine (classic fd-inheritance quirk) -- don't trust an SSH
+  timeout as "the command failed," check the process/log directly. Also: Python buffers stdout
+  when not a TTY, so a `nohup python3 script.py > log.txt` can show an empty log for 10-60s
+  even though it's working -- use `python3 -u` for anything you want to tail live.
+
+### The result: two real conditions, opposite outcomes
+Workload: `common/benchmarks/live_resnet50_train.py` (new -- every other benchmark in this
+repo is one-shot, useless for a live controller; this runs continuously and reports live
+throughput via a status file `common/deploy_live.py` tails). Controller:
+`common/deploy_live.py` (new -- the actual live control loop: NVML telemetry, waits for a
+FRESH throughput reading before trusting a measured response, runs the trained QNet, applies
+Layer 1 thermal override + the existing Layer 2 do-no-harm arbiter unmodified). Weights:
+`common/weights/response_aware_holdout_nvidia_geforce_rtx_4090.pth` (trained with the RTX
+4090 held out, so this is a genuine generalisation test, same checkpoint used in the Phase 1
+evaluation). Raw logs/data: `docs/results/phase2_hardware/`.
+
+**Condition A -- batch=32, saturating the GPU (util ~99-100%, heavily compute-bound):**
+
+| | AI-controlled | Unmanaged baseline (natural boost) |
+|---|---|---|
+| mean power | 318.9 W | 344.6 W |
+| mean ms/iter | 39.33 | 38.01 |
+| **power saving** | **+7.5%** | -- |
+| **slowdown** | **+3.5%** | -- |
+
+Modest net win, but the honest part is *how*: the do-no-harm arbiter was active **61.9%** of
+the ticks, and the policy's own raw actions were **208 DEC / 0 INC / 28 HOLD** -- it never
+once chose to raise the clock on its own. Every recovery toward max clock came from the
+arbiter's override, not the learned policy. The net result is real, but it's the safety net
+doing most of the work, not a clean demonstration of good policy behaviour.
+
+**Condition B -- batch=4, launch-bound (util ~17-20%, same workload, smaller batch):**
+
+| | AI-controlled | Unmanaged baseline |
+|---|---|---|
+| mean power | 75.1 W | 92.4 W |
+| mean ms/iter | 37.98 | 38.14 |
+| **power saving** | **+18.6%** | -- |
+| **slowdown** | **-0.4% (none, within noise)** | -- |
+| **EDP reduction** | **+19.3%** | -- |
+
+Clean, strong win. Converged in 3 steps (DEC, DEC, DEC) to 1959 MHz and **held it with zero
+arbiter trips** for the rest of the run (157 steady-state ticks, all HOLD). This is the
+system working exactly as designed: real measured response correctly told the policy
+"this is safe," and it was right.
+
+### Root cause of Condition A's over-aggressiveness -- found, not guessed
+Checked the OFFLINE profiled table for this exact workload (`pt_resnet50_train`, RTX 4090):
+`Reward` is **0.994-1.000 across the entire 1890-3135 MHz range** -- i.e. per-workload
+min-max-scaled EDP reads this whole range as "nearly optimal, nearly indistinguishable."
+But real hardware just measured a genuine ~14% per-iteration slowdown across that same range
+(3135→1965 MHz). **The policy did exactly what its training reward signal told it to do** --
+that range looked free offline. This is the exact "scaled EDP is flat near the optimum"
+issue already documented as the original motivation for the whole response-feature project
+(4 Oct 2026 finding, NORTHSTAR row 11) -- not a new problem, direct real-hardware confirmation
+that the old one still bites in deployment, now with a concrete mechanism.
+
+**Checked how pervasive this is across the whole fleet** (no GPU rental needed, existing
+data): across all 60 (GPU, workload) pairs in the 5-GPU clean fleet, the mean "near-optimal"
+(Reward ≥ 0.95) plateau spans **41% of the full clock range**, and **78.3%** of pairs have a
+plateau wider than 30% of the range. This is systemic, not a one-off quirk of this workload --
+every workload with a wide flat plateau is a candidate for the same failure mode Condition A
+showed. Reproduce: `python common/analysis/reward_plateau.py`.
+
+### What this means, and what's deliberately NOT done yet
+This is a genuine, well-evidenced limitation with an identified mechanism, not a vague "RL is
+sometimes bad" shrug -- that's exactly the kind of finding worth having for the paper. Fixing
+it properly (e.g. a reward signal with better resolution near the optimum, or retraining with
+that fix) is a real next phase of work, not something to rush tonight on top of everything
+else this session already covered. Documented here as the clear next offline item, deferred
+by explicit user instruction ("keep the paper aside for now... lots of results first").
 
 ### What was built
 1. `common/features.py`: added `RESPONSE_FEATURES` (`d_log_runtime_d_log_clock`,
@@ -124,7 +218,7 @@ plan in the superseded section below for the detail that's still current.
 
 ---
 
-## Prior next step (4 Oct 2026, evening, superseded by the Phase 1 result above): build response-aware state augmentation
+## Prior next step (4 Oct 2026, evening, superseded by the Phase 2 result above): build response-aware state augmentation (Phase 1 -- now done, see above)
 
 **This supersedes the "rent 4070/4070 Ti" plan below for now.** User decision: proceed
 with the 5-GPU clean fleet (3060/3070/3080/3090/4090); 4070/4070 Ti and the laptop are
