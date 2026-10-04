@@ -13,11 +13,13 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 4 Oct 2026, very late night): reward-plateau fix implemented and validated offline
+## IMMEDIATE NEXT STEP (as of 5 Oct 2026, very early morning): reward-plateau fix validated BOTH offline AND on real hardware
 
-**Follow-up to the Phase 2 hardware finding directly below. Fixed the root cause (flat
-near-optimum reward), retrained, and confirmed the fix changes behaviour in exactly the
-intended direction on the validated hardware case -- not just on paper.**
+**Full loop closed, same night. Fixed the root cause (flat near-optimum reward) found by
+Phase 2 hardware validation, retrained, validated offline, then went back to the SAME real
+RTX 4090 running the SAME problem workload and condition that exposed the issue, and
+confirmed the fix is a genuine, measured improvement there too -- not just a plausible
+offline story.**
 
 ### The fix
 `common/dataset_view.py`'s `core_only_view()` now computes TWO reward columns: the existing
@@ -70,13 +72,43 @@ deviations with negligible relative cost (<0.03 in log-sedp terms either way) --
 resembling the multi-step, real-measured-cost descent that caused the original hardware
 problem. No case resembles new risk.
 
+### Hardware re-validation -- same real RTX 4090, same problem condition (batch=32, ~compute-bound)
+Resumed the same rented RTX 4090 from the Phase 2 session (stopped, not destroyed -- resumed
+cleanly), re-synced the repo (picks up the new checkpoint automatically), re-ran the exact
+same workload and condition that originally exposed the plateau problem, this time with
+`common/weights/log_reward_response_aware_holdout_nvidia_geforce_rtx_4090.pth`. Baseline
+re-measured in the same session for a fair same-conditions comparison (driver/thermal state
+can drift session to session).
+
+| | old (linear-reward) | new (log-reward) |
+|---|---|---|
+| power saving vs baseline | +7.5% | **+14.1%** |
+| slowdown vs baseline | +3.5% | +5.3% |
+| **EDP change (the actual metric this project optimises for)** | +0.9% | **+4.9%** |
+| arbiter active fraction | 61.9% | **50.8%** |
+| policy's own actions | 208 DEC / **0 INC** / 28 HOLD | 143 DEC / **30 INC** / 4 HOLD |
+
+Slightly worse slowdown in isolation, but proportionally much larger power savings more than
+compensate on EDP -- a real, measured **+4.9% vs +0.9%** improvement on the metric that
+actually matters. Arbiter reliance dropped meaningfully (62%→51%), and critically, the
+policy now self-corrects (30 of its own actions raise clock back up) instead of depending
+entirely on the external safety net (0 self-directed increases before). This is the
+qualitative shift the fix was meant to produce, confirmed on the exact real hardware and
+condition that found the problem, not just inferred from an offline settling-point check.
+
+**Caveat, same as every hardware result this session: single trial, not multiple seeds --
+session-to-session thermal/driver variance is real** (baseline power itself differed ~331W
+vs ~345W between the two sessions, ~4%). The direction and magnitude of the improvement are
+consistent with the offline diagnosis and the settling-point check, which is reassuring, but
+this is one real-hardware run, not a statistically powered claim.
+
 ### Verdict
-A genuine, well-evidenced improvement, confirmed on the mechanism it was built to fix, even
-though the aggregate evaluation metric (by construction) can't register it as "better." Not
-re-validated on real hardware yet -- that's the natural next step if/when another rental
-happens, but wasn't done tonight (scope was explicitly "retrain, re-check offline first").
-Checkpoint: `common/weights/log_reward_response_aware_holdout_nvidia_geforce_rtx_4090.pth`.
-Raw: `docs/results/reward_shaping_eval.csv`.
+A genuine, well-evidenced improvement, confirmed THREE ways now: the mechanism (offline
+plateau measurement), the offline settling-point behaviour check, and a real hardware
+re-test on the exact problem case -- all three point the same direction. Checkpoint:
+`common/weights/log_reward_response_aware_holdout_nvidia_geforce_rtx_4090.pth`. Raw:
+`docs/results/reward_shaping_eval.csv`, `docs/results/phase2_hardware/deploy_logreward.log`,
+`docs/results/phase2_hardware/baseline_batch32_session2.csv`.
 
 ---
 
