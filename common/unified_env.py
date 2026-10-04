@@ -24,7 +24,7 @@ import gymnasium as gym
 from gymnasium import spaces
 from collections import deque
 
-from features import FEATURES, STACK_SIZE, ACTION_DIM
+from features import FEATURES, RESPONSE_FEATURES, STACK_SIZE, ACTION_DIM, response_features
 
 
 def discover_datasets(repo_root=None):
@@ -67,8 +67,9 @@ def _infer_core_stride(workload_df):
 class UnifiedDVFSEnv(gym.Env):
     """Core-only DVFS environment trained across multiple GPUs' data at once."""
 
-    def __init__(self, datasets=None, holdout_gpu=None, stack_size=STACK_SIZE):
+    def __init__(self, datasets=None, holdout_gpu=None, stack_size=STACK_SIZE, use_response=False):
         super().__init__()
+        self.use_response = use_response
         if datasets is None:
             datasets = discover_datasets()
         if holdout_gpu:
@@ -96,7 +97,7 @@ class UnifiedDVFSEnv(gym.Env):
 
         # 0 = decrease core, 1 = increase core, 2 = hold (matches common/features.py)
         self.action_space = spaces.Discrete(ACTION_DIM)
-        self.num_features = len(FEATURES)
+        self.num_features = len(FEATURES) + (len(RESPONSE_FEATURES) if use_response else 0)
         self.stack_size = stack_size
         self.observation_space = spaces.Box(
             low=0.0, high=1.0,
@@ -112,6 +113,12 @@ class UnifiedDVFSEnv(gym.Env):
         self.current_gpu_tag = None
         self.current_tracked_core = 1.0
         self.core_stride = 0.1
+        # response-aware state: the row BEFORE the last action, so the
+        # response features measure what that action actually did. None
+        # until the first action has been taken in an episode.
+        self.prev_core = None
+        self.prev_time = None
+        self.prev_power = None
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -128,6 +135,10 @@ class UnifiedDVFSEnv(gym.Env):
         self.current_state_row = self.current_workload_df.sample(1).iloc[0]
         self.current_tracked_core = float(self.current_state_row["core_frac"])
         self.core_stride = _infer_core_stride(self.current_workload_df)
+        # No action has been taken yet this episode -- no response to measure.
+        self.prev_core = None
+        self.prev_time = None
+        self.prev_power = None
 
         single_obs = self._get_single_observation()
         for _ in range(self.stack_size):
@@ -138,6 +149,14 @@ class UnifiedDVFSEnv(gym.Env):
     def step(self, action):
         self.current_step += 1
         stride = self.core_stride
+
+        # current_state_row, right now, is still the row BEFORE this action
+        # (either the reset-sampled start row, or last step's result) -- that
+        # IS the "prev" the response features need, so capture it before it's
+        # overwritten below.
+        self.prev_core = float(self.current_state_row["core_frac"])
+        self.prev_time = float(self.current_state_row["Avg_Time_S"])
+        self.prev_power = float(self.current_state_row["Avg_Pwr_W"])
 
         if action == 0:
             self.current_tracked_core = max(0.0, self.current_tracked_core - stride)
@@ -158,7 +177,15 @@ class UnifiedDVFSEnv(gym.Env):
         return self._get_stacked_observation(), reward, terminated, truncated, {}
 
     def _get_single_observation(self):
-        return self.current_state_row[FEATURES].values.astype(np.float32)
+        base = self.current_state_row[FEATURES].values.astype(np.float32)
+        if not self.use_response:
+            return base
+        resp = response_features(
+            self.prev_core, float(self.current_state_row["core_frac"]),
+            self.prev_time, float(self.current_state_row["Avg_Time_S"]),
+            self.prev_power, float(self.current_state_row["Avg_Pwr_W"]),
+        )
+        return np.concatenate([base, np.asarray(resp, dtype=np.float32)])
 
     def _get_stacked_observation(self):
         return np.array(self.frames, dtype=np.float32)

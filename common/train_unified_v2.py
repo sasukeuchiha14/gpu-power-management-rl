@@ -50,9 +50,9 @@ import torch.nn as nn
 _common = os.path.dirname(os.path.abspath(__file__))
 if _common not in sys.path:
     sys.path.insert(0, _common)
-from features import FEATURES, STACK_SIZE  # noqa: E402
+from features import FEATURES, RESPONSE_FEATURES, STACK_SIZE  # noqa: E402
 from dataset_view import discover_core_only  # noqa: E402
-from eval_policies import prepare  # noqa: E402
+from eval_policies import prepare, augmented_obs  # noqa: E402
 
 
 class QNet(nn.Module):
@@ -93,6 +93,8 @@ class Cfg:
     eps_start=1.0; eps_min=0.05; eps_decay=0.99
     action_cost=0.0; reward_scale=1.0
     learn_every=1; warmup=64
+    use_response=False   # False = old 6-feature state (the ablation).
+                          # True = +2 response features (context.md Phase 1).
 
     def __init__(self, **kw):
         for k, v in kw.items():
@@ -124,7 +126,7 @@ def train(holdout_gpu, cfg=None, seed=0, datasets=None, verbose=False):
     random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
     pool = build_pool(holdout_gpu, datasets)
 
-    in_dim = STACK_SIZE * len(FEATURES)
+    in_dim = STACK_SIZE * (len(FEATURES) + (len(RESPONSE_FEATURES) if cfg.use_response else 0))
     n_act = cfg.abs_actions if cfg.abs_actions else 3
     policy = QNet(in_dim, n_act, cfg.hidden, cfg.dueling)
     target = QNet(in_dim, n_act, cfg.hidden, cfg.dueling)
@@ -138,11 +140,12 @@ def train(holdout_gpu, cfg=None, seed=0, datasets=None, verbose=False):
 
     for ep in range(cfg.episodes):
         W = pool[np.random.randint(len(pool))]
-        core, feats, sedp, stride = W["core"], W["feats"], W["sedp"], W["stride"]
+        core, sedp, stride = W["core"], W["sedp"], W["stride"]
         rew_arr = 1.0 - sedp
         i = np.random.randint(len(core))
         tracked = float(core[i])
-        stack = np.repeat(feats[i][None, :], STACK_SIZE, axis=0)
+        obs0 = augmented_obs(W, i, None, cfg.use_response)
+        stack = np.repeat(obs0[None, :], STACK_SIZE, axis=0)
         total = 0.0
 
         for t in range(cfg.steps):
@@ -156,7 +159,8 @@ def train(holdout_gpu, cfg=None, seed=0, datasets=None, verbose=False):
             else:
                 tracked = float(min(1.0, max(0.0, tracked + (-stride if a == 0 else (stride if a == 1 else 0.0)))))
             j = int(np.argmin(np.abs(core - tracked)))
-            nxt = np.concatenate([stack[1:], feats[j][None, :]], axis=0)
+            obs = augmented_obs(W, j, i, cfg.use_response)
+            nxt = np.concatenate([stack[1:], obs[None, :]], axis=0)
             moved = (a != 2) if not cfg.abs_actions else (abs(tracked - float(core[i])) > 1e-9)
             r = (rew_arr[j] - (cfg.action_cost if moved else 0.0)) * cfg.reward_scale
             # Fix (1): time-limit truncation is NOT termination. This env never

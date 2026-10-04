@@ -13,7 +13,97 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 4 Oct 2026, evening): build response-aware state augmentation
+## IMMEDIATE NEXT STEP (as of 4 Oct 2026, night): Phase 1 checkpoint passed -- modestly, with real caveats
+
+**Phase 1 (response-aware state augmentation) is done and the critical question has an
+answer: yes, but modestly, not the dramatic 4.7x the 4 Oct hand-coded hill-climb found.**
+
+### What was built
+1. `common/features.py`: added `RESPONSE_FEATURES` (`d_log_runtime_d_log_clock`,
+   `d_log_power_d_log_clock`) and `response_features()` -- elasticities measured between the
+   row before an action and the row after it, clipped to `±RESPONSE_CLIP=3.0` (chosen from
+   the real measured distribution, `common/analysis/response_distribution.py`) and mapped to
+   [0,1]. NOT added to `FEATURES` itself (that's the static per-row CSV schema,
+   `preprocess_desktop.py` zips it against `build_features()`'s 6 return values -- growing it
+   would have silently broken that). The 2 new dims are computed on the fly, trajectory-side,
+   by whichever caller opts in via `use_response=True` (default `False` everywhere, so every
+   existing script -- `baselines.py`, `sweep_rl.py` -- is unaffected unless it asks).
+2. `common/unified_env.py`, `common/eval_policies.py` (`augmented_obs`), `common/train_unified_v2.py`
+   (`Cfg.use_response`): threaded the flag through the reference env, the evaluator, and the
+   fast training loop so the SAME semantics apply everywhere; the ablation (old 6-feature
+   agent) is just the identical pipeline with the flag off, not a separate code path.
+3. `eval_policies.p_hillclimb()`: a RE-implementation of the 4 Oct hand-coded hill-climb --
+   **the original script was a throwaway that was never committed and no longer exists.**
+   Swept its one free parameter + trip direction (`common/analysis/hillclimb_sweep.py`); best
+   found (threshold=0.05, step back up on trip) scores **mean ss 0.160 across 8 GPUs, which
+   LOSES to fixed-0.6 (~0.03) badly.** This does NOT reproduce the 0.0051 / "beats fixed-0.6
+   by 4.7x" finding. Either the lost script did something materially different, or that
+   finding doesn't survive careful re-implementation. Either way: do not cite 0.0051 or 4.7x
+   as a validated number going forward -- it rests on code that no longer exists.
+4. `common/analysis/response_eval.py`: the actual Phase 1 checkpoint. Leave-one-GPU-out,
+   5-seed, on the 5-GPU clean fleet (3060/3070/3080/3090/4090), settled hyperparameters
+   (γ=0.5, plain DQN, Huber, lr=3e-4, width 128), comparing governor / tuned-fixed-LOO /
+   old-ablation-DDQN / hill-climb-reference / response-aware-DDQN. Raw: `docs/results/response_eval_5seed.csv`.
+5. **Found and fixed a real pre-existing bug while debugging the hill-climb**:
+   `eval_policies.evaluate_policy()`'s "fixed per-workload eval start state" used Python's
+   built-in `hash()` on the workload name, which is salted per-process (`PYTHONHASHSEED`)
+   unless set -- so the claimed-fixed start state was NOT actually fixed across separate runs
+   (confirmed: `hash('pt_fft')` differs between two bare `python3 -c` invocations). Replaced
+   with `zlib.crc32`, which is deterministic. This affects every number ever produced by
+   `baselines.py` / `sweep_rl.py` to some degree -- re-run those before citing old numbers
+   that are sensitive to start-state (static policies and converged-enough learned ones are
+   fairly insensitive; a greedy hand-coded policy, as the hill-climb debugging showed, is not).
+
+### The result (steady-state scaled EDP, leave-one-GPU-out, 5 seeds, lower is better)
+
+| policy | mean | std | GPU-mean wins vs tuned-fixed |
+|---|---|---|---|
+| **response-aware DDQN (ours)** | **0.0250** | 0.0133 | **5/5** |
+| old snapshot DDQN (ablation) | 0.0286 | 0.0125 | 4/5 |
+| fixed clock, tuned LOO | 0.0363 | 0.0072 | -- |
+| hill-climb (reconstructed reference) | 0.1598 | 0.1375 | 0/5 |
+| governor (pinned max clock) | 0.2668 | 0.1047 | 0/5 |
+
+**The real evidence is the paired comparison** (response vs. ablation, same seed, same held-out
+GPU, only the state differs): response-aware wins **19/25** matched pairs (one-sided binomial
+p≈0.007), mean reduction ≈0.0036 (~13% relative). Not uniform -- it's a clear, consistent win
+on 3060/3080/4090 (4-5 of 5 seeds each) and a closer call on 3070/3090 (2/5 and 3/5). This is
+the number that isolates what the 2 response features bought, independent of fixed-clock noise.
+
+**Answering the question this phase was for**: does the learned agent beat the simple
+hill-climb, not just the fixed clock? **Yes, decisively** (0.025 vs 0.160) -- but only against
+the hill-climb THIS session could reconstruct, which, per point 3 above, is NOT validated as
+equivalent to the original 4 Oct finding. Read this as "RL beats a reasonable hand-coded
+response-driven heuristic," not "RL beats the best possible one."
+
+### Caveats before this goes in the paper
+- Still only 5 of 8 target GPUs (4070/4070 Ti/laptop deferred, diluted telemetry, unchanged
+  from before).
+- The headline "4.7x" number from 4 Oct is not reproduced and should not be cited without a
+  "could not be independently verified" caveat.
+- 5 seeds, leave-one-GPU-out -- better than the single-seed era, thinner than ideal given the
+  historical variance on this exact task (the pre-existing `C_nd_g50_lr` sweep had std LARGER
+  than its mean: 0.038 ± 0.043). The paired response-vs-ablation comparison is the most
+  trustworthy number here because pairing cancels seed-level noise that a mean-vs-baseline
+  comparison does not.
+- `old snapshot DDQN (ablation)` beating the tuned fixed clock here (4/5) is itself a
+  reversal of NORTHSTAR row 11's prior reading (every RL config lost) -- most likely because
+  that prior reading's variance was enormous (see above) and this run's particular 5 seeds
+  landed favourably, not because anything about the ablation changed. Do not read the
+  ablation's result as "RL now beats fixed clock even without response features" -- read it
+  as "this task is noisy enough that 5 seeds isn't fully conclusive for the ablation, which is
+  exactly why the PAIRED response-vs-ablation number, not either one's margin over fixed-clock,
+  is the load-bearing result."
+
+### Next: Phase 2 (hardware validation) -- gate: user sign-off on this checkpoint
+Per the original plan, VMs come back now that Phase 1 has a checkpoint. Given the modest (not
+dramatic) effect size, worth deciding with the user whether to proceed to hardware validation
+now or spend more offline time first (e.g. more seeds, or trying to recover a stronger
+hand-coded reference). Not decided yet -- ask before proceeding to Phase 2's VM rental.
+
+---
+
+## Prior next step (4 Oct 2026, evening, superseded by the Phase 1 result above): build response-aware state augmentation
 
 **This supersedes the "rent 4070/4070 Ti" plan below for now.** User decision: proceed
 with the 5-GPU clean fleet (3060/3070/3080/3090/4090); 4070/4070 Ti and the laptop are
