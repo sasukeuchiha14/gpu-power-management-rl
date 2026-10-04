@@ -47,7 +47,30 @@ from unified_env import discover_datasets as _discover_full  # noqa: E402
 
 def core_only_view(df, mem_select="max"):
     """One GPU's dataframe -> the core-only reachable view, Reward re-normalised
-    per workload over the reachable rows only."""
+    per workload over the reachable rows only.
+
+    Two reward columns, deliberately kept separate (4 Oct 2026, after the Phase 2
+    hardware finding -- see context.md):
+      * `Reward`      -- linear per-workload min-max over EDP. This is THE metric
+                         every number in this project's scorecard is reported in
+                         ("scaled EDP" = 1 - Reward). Never change its formula --
+                         doing so would silently redefine every historical number
+                         (0.025, 0.037, ...) out from under itself.
+      * `RewardTrain` -- log-scale per-workload min-max over EDP. Only used as the
+                         TRAINING signal (see train_unified_v2.py's use_log_reward).
+                         `Reward` is flat (>=0.95) across a plateau averaging 41% of
+                         the clock range fleet-wide (common/analysis/reward_plateau.py)
+                         because EDP curves are typically steep-then-flat and linear
+                         min-max is dominated by the single worst point -- confirmed
+                         on real hardware to hide a genuine ~14% per-iteration cost
+                         within that "flat" region. Log compresses the same worst-point
+                         domination while preserving far more RELATIVE resolution near
+                         the optimum (e.g. pt_resnet50_train/4090: Reward 0.988/0.993/
+                         0.986 across 1890-2715MHz -- indistinguishable -- vs RewardTrain
+                         0.898/0.941/0.883 over the same three points -- real gradient).
+                         Monotonic in EDP, same as `Reward`, so optimising it can only
+                         help the real metric, never game a different objective.
+    """
     if "Mem_F" not in df.columns:
         return df.copy()
     out = []
@@ -61,6 +84,9 @@ def core_only_view(df, mem_select="max"):
             gg = gg.sort_values("core_frac").drop_duplicates("core_frac", keep="first")
         span = gg["EDP"].max() - gg["EDP"].min()
         gg["Reward"] = 1.0 if span <= 0 else 1.0 - (gg["EDP"] - gg["EDP"].min()) / span
+        log_edp = np.log(gg["EDP"])
+        log_span = log_edp.max() - log_edp.min()
+        gg["RewardTrain"] = 1.0 if log_span <= 0 else 1.0 - (log_edp - log_edp.min()) / log_span
         out.append(gg)
     return pd.concat(out, ignore_index=True)
 

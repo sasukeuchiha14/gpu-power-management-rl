@@ -95,6 +95,13 @@ class Cfg:
     learn_every=1; warmup=64
     use_response=False   # False = old 6-feature state (the ablation).
                           # True = +2 response features (context.md Phase 1).
+    use_log_reward=False # False = train on the linear scaled-EDP reward (same
+                          # metric as evaluation, original behaviour).
+                          # True = train on the log-scale reward (sedp_train,
+                          # see dataset_view.core_only_view) -- fixes the flat
+                          # near-optimum plateau a Phase 2 hardware run showed
+                          # causes real over-aggressive downclocking. Evaluation
+                          # always uses the unchanged linear metric regardless.
 
     def __init__(self, **kw):
         for k, v in kw.items():
@@ -140,8 +147,9 @@ def train(holdout_gpu, cfg=None, seed=0, datasets=None, verbose=False):
 
     for ep in range(cfg.episodes):
         W = pool[np.random.randint(len(pool))]
-        core, sedp, stride = W["core"], W["sedp"], W["stride"]
-        rew_arr = 1.0 - sedp
+        core, stride = W["core"], W["stride"]
+        sedp_for_training = W["sedp_train"] if cfg.use_log_reward else W["sedp"]
+        rew_arr = 1.0 - sedp_for_training
         i = np.random.randint(len(core))
         tracked = float(core[i])
         obs0 = augmented_obs(W, i, None, cfg.use_response)

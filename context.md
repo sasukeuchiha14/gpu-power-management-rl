@@ -13,7 +13,74 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 4 Oct 2026, late night): Phase 2 hardware validation DONE -- real, honest, two-sided result
+## IMMEDIATE NEXT STEP (as of 4 Oct 2026, very late night): reward-plateau fix implemented and validated offline
+
+**Follow-up to the Phase 2 hardware finding directly below. Fixed the root cause (flat
+near-optimum reward), retrained, and confirmed the fix changes behaviour in exactly the
+intended direction on the validated hardware case -- not just on paper.**
+
+### The fix
+`common/dataset_view.py`'s `core_only_view()` now computes TWO reward columns: the existing
+`Reward` (linear per-workload min-max over EDP -- UNCHANGED, still the metric every number in
+this project's scorecard means), and a new `RewardTrain` (same min-max but in log(EDP) space).
+Log compresses the single-worst-point domination that causes the linear metric's flat
+near-optimum plateau, while preserving far more RELATIVE resolution near the optimum (e.g.
+`pt_resnet50_train`/4090: linear Reward 0.988/0.993/0.986 across 1890-2715MHz -- indistinguishable
+-- vs log 0.898/0.941/0.883 over the same three points -- real gradient). Monotonic in EDP, so
+optimising it can only help the real metric, never game a different objective.
+
+Threaded through as a strict opt-in, same pattern as Phase 1's `use_response`:
+`eval_policies.prepare()` now also returns `sedp_train` (falls back to the unchanged `sedp` if
+`RewardTrain` isn't present); `train_unified_v2.Cfg.use_log_reward` (default `False`) switches
+only the TRAINING loop's reward array between the two. Evaluation always uses the unchanged
+linear metric regardless of what a policy was trained on, so old and new numbers stay directly
+comparable. `common/analysis/reward_shaping_eval.py` is the new checkpoint script (mirrors
+`response_eval.py`'s structure).
+
+### Offline result -- mixed on the aggregate metric, confirmed on the mechanism
+10 seeds, 5-GPU leave-one-GPU-out, response-aware state + log-reward training, same settled
+hyperparameters as every other result this session:
+
+| | mean steady-state scaled EDP | std |
+|---|---|---|
+| log-reward (new) | 0.0247 | 0.0257 |
+| linear-reward (existing, validated) | 0.0250 | 0.0127 |
+
+Essentially unchanged mean, but roughly 2x the variance -- paired comparison (same seed/GPU)
+shows log-reward winning only 29/50 (p=0.32, not significant). **This is expected, not a
+failure of the fix**: the linear metric is EXACTLY the thing that can't see restraint inside
+the plateau as valuable (it already scores that whole region ~1.0), so a less-aggressive
+policy trained to avoid it won't necessarily score better on that same blind metric. The
+metric cannot grade the thing the fix changes.
+
+**The real test: does the policy actually settle more safely on the validated hardware case?**
+Checked directly (not inferred) -- starting from max clock (matching real deployment), on
+`pt_resnet50_train`/4090 (the exact workload and GPU from the Phase 2 hardware run): the OLD
+linear-reward policy settles at core_frac=0.737 (2310 MHz); the NEW log-reward policy stops
+one level higher, at 0.866 (2715 MHz) -- i.e. it now avoids descending into the exact clock
+range real hardware showed costs a genuine ~14% per-iteration slowdown. **Confirmed, not
+theorised.**
+
+Checked across all 12 workloads on the held-out 4090, not just this one case: log-reward
+settles at the same-or-higher clock on 8/12. Of the 4 where it settles lower, inspected each
+curve directly -- 2 (`pt_crypto_proxy`, `pt_mobilenet`) are the log-reward agent CORRECTING
+genuine over-conservatism in the old linear-reward policy (moving closer to each workload's
+own true optimum, which both metrics agree on), and 2 (`pt_fft`, `pt_bert`) are single-grid-step
+deviations with negligible relative cost (<0.03 in log-sedp terms either way) -- nothing
+resembling the multi-step, real-measured-cost descent that caused the original hardware
+problem. No case resembles new risk.
+
+### Verdict
+A genuine, well-evidenced improvement, confirmed on the mechanism it was built to fix, even
+though the aggregate evaluation metric (by construction) can't register it as "better." Not
+re-validated on real hardware yet -- that's the natural next step if/when another rental
+happens, but wasn't done tonight (scope was explicitly "retrain, re-check offline first").
+Checkpoint: `common/weights/log_reward_response_aware_holdout_nvidia_geforce_rtx_4090.pth`.
+Raw: `docs/results/reward_shaping_eval.csv`.
+
+---
+
+## Prior next step (4 Oct 2026, late night, superseded by the reward-plateau fix above): Phase 2 hardware validation DONE -- real, honest, two-sided result
 
 **Phase 2 (hardware validation) is complete. Deployed the trained response-aware DDQN
 (RTX 4090 holdout checkpoint) as a real control loop against a rented RTX 4090, driving an

@@ -44,15 +44,25 @@ def infer_stride(core_levels):
 
 
 def prepare(df):
-    """{workload: dict of numpy arrays} for fast repeated rollouts."""
+    """{workload: dict of numpy arrays} for fast repeated rollouts.
+
+    `sedp` (1 - Reward, linear) is THE evaluation metric everywhere in this
+    project -- never change its source. `sedp_train` (1 - RewardTrain, log-scale,
+    see dataset_view.core_only_view) is a SEPARATE, training-only signal; falls
+    back to `sedp` if RewardTrain isn't present (e.g. a df that didn't go through
+    core_only_view), so this is a strict opt-in with no effect unless a caller
+    asks for it.
+    """
     out = {}
     for wl, g in df.groupby("Workload_Name"):
         g = g.sort_values("core_frac").reset_index(drop=True)
         core = g["core_frac"].to_numpy(dtype=np.float64)
+        reward_train_col = g["RewardTrain"] if "RewardTrain" in g.columns else g["Reward"]
         out[wl] = dict(
             feats=g[FEATURES].to_numpy(dtype=np.float32),
             core=core,
             sedp=(1.0 - g["Reward"].to_numpy(dtype=np.float64)),
+            sedp_train=(1.0 - reward_train_col.to_numpy(dtype=np.float64)),
             stride=infer_stride(core),
             opt_core=float(g.loc[g["EDP"].idxmin(), "core_frac"]),
             # raw (unnormalised) time/power, needed only to compute the
