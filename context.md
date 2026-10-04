@@ -13,7 +13,102 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 4 Oct 2026): rent 4070/4070 Ti when available; redo laptop
+## IMMEDIATE NEXT STEP (as of 4 Oct 2026, evening): build response-aware state augmentation
+
+**This supersedes the "rent 4070/4070 Ti" plan below for now.** User decision: proceed
+with the 5-GPU clean fleet (3060/3070/3080/3090/4090); 4070/4070 Ti and the laptop are
+deferred, not abandoned -- revisit once rentable. **No VM rental needed for the next
+phase** -- it's pure offline work against the CSVs already committed.
+
+### The finding that changed the plan
+
+The "fixed 0.6x is unbeatable" result (NORTHSTAR row 11) was real but **metric-blind**:
+scaled EDP is min-max normalised per workload and the EDP curve is flat near its optimum,
+so a policy at 12% slowdown and one at 0.8% slowdown can score almost the same. Checked
+in absolute terms (energy saved % / slowdown % vs max clock, 5 GPUs x 12 workloads,
+leave-one-GPU-out): a **closed-loop policy that measures its own clock changes** (step
+down, watch what actually happens, stop when the measured response says to) gets the
+same energy savings as fixed-0.6 for a **5x smaller slowdown**, and in the project's own
+scaled-EDP metric scores **0.0051 vs fixed-0.6's 0.0240** -- a 4.7x improvement, beating
+it on **5 of 5 GPUs**, on data already committed. (This was a hand-coded greedy hill-climb,
+not yet a learned policy -- see Phase 1 below.)
+
+**Why the DQN was losing isn't RL -- it's the state.** Snapshot telemetry (power, temp,
+util at one instant) cannot discriminate workloads across GPUs: verified binary
+compute/bandwidth regime ID leave-one-GPU-out is 0.56 (barely above chance), and
+`core_frac` alone explains 0.78 of the 0.81 "is clock below optimum" accuracy -- the other
+5 channels add ~3 points (`common/analysis/diagnose_features.py`). The agent has nothing
+to discriminate on. **The response to its own action is exactly the missing signal**, and
+critically it's a *ratio* (e.g. Δlog(runtime)/Δlog(clock)), so it's naturally
+device-invariant -- which matters a lot given the unit-to-unit hardware variability
+already found this session (same-model GPUs with different real ceilings: RTX 3060
+2145 vs 2190 MHz, RTX 3090 390 vs 350 W power limit -- absolute normalisation is fragile,
+ratios aren't).
+
+### Decision: keep RL, DDQN, and EDP. Do not replace them.
+
+User is explicit about this and it's the right call for the paper framing. The change is
+additive: **augment the state with 2 response features**, not a new objective or a new
+algorithm. Novelty claim for the paper: *"snapshot telemetry doesn't transfer across
+consumer GPUs because of unit-level hardware variability; response-aware state
+augmentation fixes it, validated leave-one-GPU-out."* That's a full diagnose-explain-fix-
+validate arc backed by data already in this repo.
+
+Literature check (done this session, see git log / prior conversation if lost -- searched
+and found real prior art, so set expectations accordingly): closed-loop DVFS under a
+performance constraint already exists (not a novel mechanism by itself); cross-GPU
+transfer for DVFS also exists (WattGPU, MetaDVFS, cross-domain power models, DRLCap for
+RL+EDP specifically). **Top-tier venues (ISCA/MICRO/ASPLOS/HPCA/SC) are not realistic.**
+Workshops, mid-tier journals (Sustainable Computing, J. Systems Architecture, FGCS),
+student tracks, and arXiv are realistic and the right target.
+
+### Phase 1 -- offline, no GPU rental needed (~2 days)
+
+1. Add 2 features to `common/features.py` (6 -> 8): response ratios computed from the
+   *last* action taken -- e.g. `d_log_runtime_d_log_clock` and `d_log_power_d_log_clock`
+   between the pre- and post-action measurements. Keep the existing 6 features; this is
+   additive, matching "don't stray from EDP/RL/DDQN."
+2. `unified_env.py`: track the previous clock setpoint and its resulting row so `step()`
+   can expose the measured response as the new state dims. The env is still a table
+   lookup (same honest limitation as before -- say so in the paper).
+3. Retrain via `train_unified_v2.py`, same settled hyperparameters (gamma=0.5, plain DQN
+   not Double, Huber loss, lr 3e-4, width 128 -- do not re-litigate these, already swept).
+4. **Leave-one-GPU-out evaluation, the key checkpoint**, comparing:
+   - governor (max clock) and tuned fixed clocks -- existing baselines, unchanged
+   - **snapshot-state DDQN** (the old 6-feature agent) -- the ablation that shows *why*
+     the old approach lost
+   - **greedy hill-climb** (the hand-coded response-driven policy, 0.0051 scaled EDP) --
+     the ceiling-ish reference; if the learned agent can't approach this, something's
+     wrong in the RL setup, not the idea
+   - **response-aware DDQN** (new, 8-feature) -- the actual contribution
+5. **Critical ablation for defending "why RL" to reviewers**: does the learned
+   response-aware DDQN meaningfully beat the simple hand-coded greedy hill-climb? If RL
+   just matches a dumb rule, the paper's RL framing is weaker -- quantify this honestly
+   either way. (Hill-climb gets stuck at local minima the oracle doesn't -- 0.0051 vs
+   0.0000 -- so there's headroom for RL to add value by looking past local bumps; whether
+   it actually does is an empirical question Phase 1 answers.)
+
+### Phase 2 -- hardware validation (VMs needed, only after Phase 1 confirms the offline result)
+
+Deploy the trained response-aware policy live on a rented GPU. Use a workload with a
+natural live work-rate signal -- graphics/frame-time workload as the user suggested, or
+any iterative benchmark reporting steps/sec -- so the "measured response" is real, not
+simulated. Three-way comparison: driver default (no management) / tuned fixed clock /
+response-aware DDQN. Measure real energy via NVML power integration. Headline graphs:
+power-vs-time traces overlaid, plus a bar chart of total energy and runtime across the
+three conditions. **This is the first point VMs are needed again** -- do not rent before
+Phase 1's checkpoint (step 5 above) is done and looks right.
+
+### Phase 3 -- paper (~1 week)
+
+Write-up targeting a workshop or mid-tier journal (see literature check above), arXiv
+regardless. Structure: the telemetry-dilution finding, the unit-variability finding, the
+snapshot-state-can't-discriminate finding (diagnose_features.py), then the fix
+(response-aware state) and its validation (Phase 1 leave-one-GPU-out + Phase 2 hardware).
+
+---
+
+## Prior next step (4 Oct 2026 AM, superseded by response-aware augmentation above): rent 4070/4070 Ti when available; redo laptop
 
 **5 of 7 desktop GPUs re-collected and committed** (RTX 3060, 3070, 3080, 3090, 4090;
 commit `8e90f12`), each audited clean (exact row counts, zero duplicates, zero EDP
