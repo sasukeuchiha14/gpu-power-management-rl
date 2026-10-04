@@ -13,7 +13,87 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 5 Oct 2026, early morning): repeated hardware trials reveal the reward-fix is a genuine TRADE-OFF, not a clean win
+## IMMEDIATE NEXT STEP (as of 5 Oct 2026, very early morning, session paused here): fixing the limit-cycle problem is still OPEN -- candidate found promising in screening, did not hold up at full validation
+
+**Follow-up to the repeated-trials finding directly below (the launch-bound limit-cycle
+problem). Session paused mid-investigation by explicit user request ("stop for now, continue
+tomorrow") -- this is NOT a resolved state, pick up here next time.**
+
+### What was tried
+1. **Root-caused the mechanism properly.** First guess (noise-driven flip-flopping near a
+   sharp decision boundary) was WRONG -- built an offline noise-injection proxy
+   (`eval_policies`-based, inject N(0,std) into a settled observation, measure how often the
+   argmax action changes) and it did NOT predict the known hardware result (showed the NEW
+   checkpoint as MORE stable than old on `pt_vector_add`/`pt_elementwise`, backwards from
+   reality). Discarded that proxy. **The real mechanism, confirmed offline with zero noise
+   needed**: running the trained policy's own deterministic rollout for 100 steps from max
+   clock, the pure-log-reward checkpoint genuinely CYCLES between two adjacent clock levels on
+   many workloads (10 of 12, checked properly -- an earlier partial check of just 6 workloads
+   undercounted this). This is a real closed-loop limit cycle baked into the policy's learned
+   response to its own actions, not measurement noise.
+2. **Screened two candidate fixes** (`common/analysis/reward_shape_sweep.py`, both knobs
+   already wired into `train_unified_v2.Cfg`): `reward_power` (interpolate the training
+   reward between linear and log instead of jumping straight to log) made cycling WORSE across
+   the board (0.72-0.78 cycle rate vs pure-log's 0.53) -- that hypothesis was wrong, discarded.
+   `action_cost` (penalise every non-HOLD action, already-existing knob, newly combined with
+   the log reward) looked like a clear winner in a 3-seed screen: action_cost=0.05 gave the
+   LOWEST cycle rate of all 8 candidates tested (0.22, even below the ORIGINAL pre-fix
+   baseline's 0.39), while still settling `pt_resnet50_train` at the hardware-validated safe
+   clock level.
+3. **Did NOT hold up at full validation.** Trained the actual deployable checkpoint
+   (`common/weights/action_cost_fix_holdout_nvidia_geforce_rtx_4090.pth`, seed=0, proper
+   5-GPU-minus-holdout protocol) and re-ran the SAME 12-workload cycle check used for
+   screening: this specific seed cycles on **9 of 12** workloads -- barely better than
+   pure-log's 10/12, and it flipped `pt_bert` from stable to cycling while fixing 2 others net.
+   **This is a large, concerning gap between the 3-seed screening average (0.22) and this one
+   seed's actual result (0.75)** -- cycle-rate itself appears to be highly seed-sensitive, the
+   same kind of problem this project has been burned by repeatedly this session (seed variance
+   hiding behind an averaged number). Flagged to the user rather than quietly picking a
+   favourable-looking seed and calling it validated.
+
+### State left in
+- `common/train_unified_v2.py`: `Cfg.reward_power` added (generalises `use_log_reward` to a
+  tunable compression strength, computed on the fly from `W["edp"]` so candidates can be
+  swept without precomputing new dataset columns -- see the Cfg docstring for the exact
+  parameterisation, p=1.0 is the original linear reward, p=0.0 is identical to
+  `use_log_reward=True`, verified to match exactly).
+- `common/eval_policies.py`: `prepare()` now also exposes raw `W["edp"]`, needed for the
+  on-the-fly reward_power computation.
+- Offline aggregate metric for the action_cost=0.05 + log-reward combo, 5-GPU/10-seed,
+  proper protocol: mean 0.0330, std 0.0260 (worse than both the original 0.0250 and pure-log's
+  0.0247 -- expected, same reasoning as before, this metric is blind to the thing being
+  fixed, so don't read this alone as "the candidate is bad").
+- Raw: `docs/results/reward_shape_sweep.csv` (3-seed screening, 8 candidates),
+  `docs/results/action_cost_fix_10seed.csv` (5-GPU/10-seed full validation of the one
+  candidate). Scripts: `common/analysis/reward_shape_sweep.py`,
+  `common/analysis/action_cost_fix_validate.py`.
+
+### Next session, pick up here
+1. Run MORE seeds of the action_cost=0.05 cycle-check (not just seed 0) to find out whether
+   the 3-seed screening average (0.22) or the single full-protocol seed (0.75) is closer to
+   the truth -- this is the single open question blocking any conclusion.
+2. If action_cost doesn't pan out reliably, the remaining untried lever is a genuinely
+   different mechanism (not reward shaping at all) -- e.g. a deployment-side debounce/hysteresis
+   in `common/deploy_live.py` (option 3 from the "what can we do" discussion, never
+   implemented): require the same action chosen N consecutive ticks before committing it. No
+   retraining needed, directly targets the oscillation symptom rather than the reward cause,
+   worth trying regardless of whether the reward-side fix is ever found.
+3. Whatever offline candidate looks good should go back to real hardware for a repeat-trial
+   confirmation (same protocol as before, `common/repeat_trials.sh`) before being trusted --
+   established clearly this session that single trials and even small seed counts mislead here.
+
+### Also added this session, independent of the above
+`common/vm_watchdog.sh` + a systemd user timer (`~/.config/systemd/user/vm-watchdog.{service,timer}`,
+enabled, runs every 10 min) -- checks any running vast.ai rental for this project for
+problems (stuck SSH, clocks locked while idle with no workload, long-running stray processes,
+instance running an unexpectedly long time). Silent unless it finds something; logs to
+`common/vm_watchdog.log` only when it does. Local-machine-only by design -- a cloud scheduled
+routine was considered and rejected (1 hour minimum interval, no access to the local vastai
+CLI auth or SSH key needed to actually check anything).
+
+---
+
+## Prior next step (5 Oct 2026, early morning, superseded by the open investigation above): repeated hardware trials reveal the reward-fix is a genuine TRADE-OFF, not a clean win
 
 **Follow-up to the single-trial re-validation directly below. That result was real but
 incomplete -- it only ran ONE trial per condition. Repeated it (3 reps each, old vs new

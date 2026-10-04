@@ -61,6 +61,7 @@ def prepare(df):
         out[wl] = dict(
             feats=g[FEATURES].to_numpy(dtype=np.float32),
             core=core,
+            edp=g["EDP"].to_numpy(dtype=np.float64),
             sedp=(1.0 - g["Reward"].to_numpy(dtype=np.float64)),
             sedp_train=(1.0 - reward_train_col.to_numpy(dtype=np.float64)),
             stride=infer_stride(core),

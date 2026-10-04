@@ -102,6 +102,18 @@ class Cfg:
                           # near-optimum plateau a Phase 2 hardware run showed
                           # causes real over-aggressive downclocking. Evaluation
                           # always uses the unchanged linear metric regardless.
+    reward_power=None    # None = use use_log_reward above (unchanged). A float
+                          # OVERRIDES use_log_reward with a tunable per-workload
+                          # min-max over EDP**reward_power (1.0 = identical to
+                          # the original linear reward, 0.0 = identical to
+                          # use_log_reward's log(EDP), values in between
+                          # interpolate the compression strength). Computed on
+                          # the fly from W["edp"] so it can be swept without
+                          # precomputing a new dataset column per candidate --
+                          # see common/analysis/reward_shape_sweep.py, built
+                          # after repeated hardware trials found the pure-log
+                          # fix (reward_power=0) trades compute-bound stability
+                          # for launch-bound oscillation (context.md, 5 Oct).
 
     def __init__(self, **kw):
         for k, v in kw.items():
@@ -148,8 +160,14 @@ def train(holdout_gpu, cfg=None, seed=0, datasets=None, verbose=False):
     for ep in range(cfg.episodes):
         W = pool[np.random.randint(len(pool))]
         core, stride = W["core"], W["stride"]
-        sedp_for_training = W["sedp_train"] if cfg.use_log_reward else W["sedp"]
-        rew_arr = 1.0 - sedp_for_training
+        if cfg.reward_power is not None:
+            edp = W["edp"]
+            x = np.log(edp) if cfg.reward_power == 0 else edp ** cfg.reward_power
+            span = x.max() - x.min()
+            rew_arr = np.ones_like(edp) if span <= 0 else 1.0 - (x - x.min()) / span
+        else:
+            sedp_for_training = W["sedp_train"] if cfg.use_log_reward else W["sedp"]
+            rew_arr = 1.0 - sedp_for_training
         i = np.random.randint(len(core))
         tracked = float(core[i])
         obs0 = augmented_obs(W, i, None, cfg.use_response)
