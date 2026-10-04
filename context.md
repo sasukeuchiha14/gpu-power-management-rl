@@ -13,10 +13,14 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 4 Oct 2026, night): Phase 1 checkpoint passed -- modestly, with real caveats
+## IMMEDIATE NEXT STEP (as of 4 Oct 2026, night): Phase 1 checkpoint PASSED, decided to proceed to Phase 2
 
-**Phase 1 (response-aware state augmentation) is done and the critical question has an
-answer: yes, but modestly, not the dramatic 4.7x the 4 Oct hand-coded hill-climb found.**
+**Phase 1 (response-aware state augmentation) is done. 10-seed result (see below): the
+response features turn "beats a tuned fixed clock" from close to a coin flip into a reliable
+5/5-GPU win with tight variance. Not the dramatic 4.7x the 4 Oct hand-coded hill-climb claimed
+(that doesn't reproduce -- see point 3 below) but a real, statistically solid effect
+(p≈0.00015 on the paired comparison). Decision: proceed to Phase 2 (hardware validation,
+VM rental) -- this checkpoint looks right.**
 
 ### What was built
 1. `common/features.py`: added `RESPONSE_FEATURES` (`d_log_runtime_d_log_clock`,
@@ -54,21 +58,33 @@ answer: yes, but modestly, not the dramatic 4.7x the 4 Oct hand-coded hill-climb
    that are sensitive to start-state (static policies and converged-enough learned ones are
    fairly insensitive; a greedy hand-coded policy, as the hill-climb debugging showed, is not).
 
-### The result (steady-state scaled EDP, leave-one-GPU-out, 5 seeds, lower is better)
+### The result (steady-state scaled EDP, leave-one-GPU-out, 10 seeds, lower is better)
+
+Run twice as two independent 5-seed batches (seeds 0-4, then a fresh 5-9 never touched by any
+tuning) specifically to check the first batch wasn't a lucky draw. It wasn't -- the
+response-aware mean is **identical** across both batches (0.0250, 0.0250).
 
 | policy | mean | std | GPU-mean wins vs tuned-fixed |
 |---|---|---|---|
-| **response-aware DDQN (ours)** | **0.0250** | 0.0133 | **5/5** |
-| old snapshot DDQN (ablation) | 0.0286 | 0.0125 | 4/5 |
+| **response-aware DDQN (ours)** | **0.0250** | 0.0127 | **5/5** |
+| old snapshot DDQN (ablation) | 0.0375 | 0.0367 | 3/5 |
 | fixed clock, tuned LOO | 0.0363 | 0.0072 | -- |
 | hill-climb (reconstructed reference) | 0.1598 | 0.1375 | 0/5 |
 | governor (pinned max clock) | 0.2668 | 0.1047 | 0/5 |
 
 **The real evidence is the paired comparison** (response vs. ablation, same seed, same held-out
-GPU, only the state differs): response-aware wins **19/25** matched pairs (one-sided binomial
-p≈0.007), mean reduction ≈0.0036 (~13% relative). Not uniform -- it's a clear, consistent win
-on 3060/3080/4090 (4-5 of 5 seeds each) and a closer call on 3070/3090 (2/5 and 3/5). This is
-the number that isolates what the 2 response features bought, independent of fixed-clock noise.
+GPU, only the state differs): response-aware wins **38/50** matched pairs (one-sided binomial
+p≈0.00015), mean reduction ~0.0125 (~33% relative over the ablation's mean).
+
+**The sharper reading, now that the ablation's variance shows up clearly (std 0.0367 ≈ its own
+mean)**: without the response features, the DDQN's edge over a tuned fixed clock is close to a
+coin flip (3/5 GPUs, mean now statistically indistinguishable from fixed-clock's 0.0363) --
+one bad seed on the RTX 4090 alone pushed the ablation's mean from 0.0286 (first 5 seeds) to
+0.0375 (all 10). With the response features, the result doesn't move: same mean, tight std,
+5/5 GPUs both times. **The 2 response features are not just a modest improvement on top of an
+already-working RL approach -- they're what makes the approach reliably beat the fixed clock
+at all; without them, whether it wins is close to a coin flip.** This is a cleaner, more
+defensible claim than the original "modest ~13%" read from 5 seeds.
 
 **Answering the question this phase was for**: does the learned agent beat the simple
 hill-climb, not just the fixed clock? **Yes, decisively** (0.025 vs 0.160) -- but only against
@@ -81,25 +97,30 @@ response-driven heuristic," not "RL beats the best possible one."
   from before).
 - The headline "4.7x" number from 4 Oct is not reproduced and should not be cited without a
   "could not be independently verified" caveat.
-- 5 seeds, leave-one-GPU-out -- better than the single-seed era, thinner than ideal given the
-  historical variance on this exact task (the pre-existing `C_nd_g50_lr` sweep had std LARGER
-  than its mean: 0.038 ± 0.043). The paired response-vs-ablation comparison is the most
-  trustworthy number here because pairing cancels seed-level noise that a mean-vs-baseline
-  comparison does not.
-- `old snapshot DDQN (ablation)` beating the tuned fixed clock here (4/5) is itself a
-  reversal of NORTHSTAR row 11's prior reading (every RL config lost) -- most likely because
-  that prior reading's variance was enormous (see above) and this run's particular 5 seeds
-  landed favourably, not because anything about the ablation changed. Do not read the
-  ablation's result as "RL now beats fixed clock even without response features" -- read it
-  as "this task is noisy enough that 5 seeds isn't fully conclusive for the ablation, which is
-  exactly why the PAIRED response-vs-ablation number, not either one's margin over fixed-clock,
-  is the load-bearing result."
+- 10 seeds, leave-one-GPU-out, run as two independent 5-seed batches specifically to check
+  for a lucky draw -- it held up (response-aware mean identical across both batches: 0.0250,
+  0.0250). The historical variance on this exact task is large (the pre-existing
+  `C_nd_g50_lr` sweep had std LARGER than its mean: 0.038 ± 0.043) and this run reproduces
+  that instability for the ablation (std 0.0367 on mean 0.0375) -- which is exactly why the
+  PAIRED response-vs-ablation comparison (p≈0.00015), not either policy's raw margin over
+  fixed-clock, is the load-bearing result.
+- `old snapshot DDQN (ablation)` only reliably beats the tuned fixed clock on 3/5 GPUs across
+  10 seeds (down from an apparent 4/5 on the first 5 -- a single bad RTX 4090 seed in the
+  second batch was enough to flip the read). This directly explains why NORTHSTAR row 4/11's
+  prior readings called it a loss: the ablation's margin over fixed-clock is genuinely
+  seed-dependent, close to a coin flip. The response-aware variant does NOT show this
+  instability (5/5 both batches, tight std) -- that stability, not just the mean, is the
+  main evidence the 2 features are doing real work.
 
-### Next: Phase 2 (hardware validation) -- gate: user sign-off on this checkpoint
-Per the original plan, VMs come back now that Phase 1 has a checkpoint. Given the modest (not
-dramatic) effect size, worth deciding with the user whether to proceed to hardware validation
-now or spend more offline time first (e.g. more seeds, or trying to recover a stronger
-hand-coded reference). Not decided yet -- ask before proceeding to Phase 2's VM rental.
+### Next: Phase 2 (hardware validation) -- DECIDED, proceeding
+User handed this decision over explicitly ("you choose"). Given the 10-seed result is
+statistically solid (p≈0.00015) and reproduces cleanly across two independent seed batches,
+the offline checkpoint looks right per the original gate in the now-superseded plan below.
+**Decision: proceed to Phase 2.** Next session: rent a GPU with a workload that has a natural
+live work-rate signal (graphics/frame-time, or any iterative benchmark reporting steps/sec),
+deploy the trained response-aware policy, three-way compare against driver default and the
+tuned fixed clock, measure real energy via NVML power integration. See the original Phase 2
+plan in the superseded section below for the detail that's still current.
 
 ---
 
