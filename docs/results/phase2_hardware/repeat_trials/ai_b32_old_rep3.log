@@ -1,0 +1,101 @@
+[deploy_live] NVIDIA GeForce RTX 4090 | hw limits: {'max_core_mhz': 3135.0, 'max_mem_mhz': 10501.0, 'power_limit_w': 450.0, 'slowdown_temp_c': 99.0, 'total_vram_mb': 24564.0}
+[LIVE] a=DEC  target=  2743MHz observed=  2745MHz 286.2W 62.0C util= 72% ms/iter= 48.69 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  2351MHz observed=  2745MHz 295.4W 63.0C util= 72% ms/iter= 44.33 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  1959MHz observed=  2355MHz 266.0W 61.0C util= 90% ms/iter= 44.74 resp=(0.49,0.61)
+[LIVE] a=DEC  target=  1568MHz observed=  1965MHz 221.5W 60.0C util= 96% ms/iter= 45.37 resp=(0.49,0.67)
+[LIVE] a=INC  target=  3135MHz observed=  1575MHz 199.2W 59.0C util=100% ms/iter= 51.01 resp=(0.41,0.58) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 243.7W 62.0C util= 78% ms/iter= 44.21 resp=(0.46,0.56) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 297.9W 64.0C util= 90% ms/iter= 46.01 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 299.0W 64.0C util= 81% ms/iter= 44.55 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 310.9W 63.0C util= 99% ms/iter= 44.74 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  2743MHz observed=  2745MHz 299.5W 62.0C util= 82% ms/iter= 47.03 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  2351MHz observed=  2745MHz 293.6W 62.0C util= 85% ms/iter= 47.47 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  1959MHz observed=  2355MHz 242.6W 60.0C util= 81% ms/iter= 45.70 resp=(0.54,0.71)
+[LIVE] a=DEC  target=  1568MHz observed=  1965MHz 225.7W 60.0C util= 81% ms/iter= 45.45 resp=(0.50,0.57)
+[LIVE] a=INC  target=  1959MHz observed=  1575MHz 206.5W 59.0C util= 99% ms/iter= 50.91 resp=(0.41,0.57)
+[LIVE] a=INC  target=  2351MHz observed=  1965MHz 209.3W 59.0C util=100% ms/iter= 44.60 resp=(0.40,0.51)
+[LIVE] a=DEC  target=  3135MHz observed=  2355MHz 238.7W 60.0C util=100% ms/iter= 42.41 resp=(0.45,0.62) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 282.4W 62.0C util= 81% ms/iter= 46.96 resp=(0.61,0.68) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 293.5W 63.0C util= 82% ms/iter= 46.83 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 295.7W 62.0C util= 83% ms/iter= 46.73 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 307.7W 64.0C util= 90% ms/iter= 43.79 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  2743MHz observed=  2745MHz 297.1W 62.0C util= 83% ms/iter= 46.73 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  2351MHz observed=  2745MHz 303.8W 63.0C util= 95% ms/iter= 43.73 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  1959MHz observed=  2355MHz 254.6W 60.0C util= 85% ms/iter= 44.43 resp=(0.48,0.69)
+[LIVE] a=DEC  target=  3135MHz observed=  1965MHz 220.8W 59.0C util= 85% ms/iter= 45.72 resp=(0.47,0.63) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 258.4W 62.0C util= 87% ms/iter= 46.07 resp=(0.50,0.58) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 294.9W 62.0C util= 80% ms/iter= 46.94 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 298.0W 62.0C util= 84% ms/iter= 44.86 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 320.9W 63.0C util=100% ms/iter= 41.90 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  2743MHz observed=  2745MHz 304.4W 63.0C util= 81% ms/iter= 47.17 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  2351MHz observed=  2745MHz 297.8W 63.0C util= 87% ms/iter= 46.15 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  1959MHz observed=  2355MHz 262.9W 60.0C util= 86% ms/iter= 46.77 resp=(0.49,0.64)
+[LIVE] a=DEC  target=  3135MHz observed=  1965MHz 219.6W 59.0C util= 94% ms/iter= 46.85 resp=(0.50,0.67) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 261.9W 62.0C util= 83% ms/iter= 46.86 resp=(0.50,0.59) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 296.1W 63.0C util= 80% ms/iter= 46.82 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 297.2W 62.0C util= 84% ms/iter= 45.87 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 309.5W 62.0C util= 84% ms/iter= 43.39 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  2743MHz observed=  2745MHz 310.8W 63.0C util= 80% ms/iter= 44.10 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  2351MHz observed=  2745MHz 302.4W 63.0C util= 83% ms/iter= 45.61 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  1959MHz observed=  2355MHz 263.7W 61.0C util= 89% ms/iter= 43.36 resp=(0.56,0.65)
+[LIVE] a=HOLD target=  1959MHz observed=  1965MHz 236.1W 60.0C util=100% ms/iter= 43.47 resp=(0.50,0.60)
+[LIVE] a=INC  target=  3135MHz observed=  1965MHz 221.7W 59.0C util=100% ms/iter= 44.01 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 267.2W 61.0C util= 86% ms/iter= 42.96 resp=(0.49,0.59) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 311.7W 63.0C util=100% ms/iter= 42.95 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 305.6W 63.0C util= 75% ms/iter= 45.20 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 302.4W 62.0C util= 75% ms/iter= 45.06 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  2743MHz observed=  2745MHz 305.2W 63.0C util= 86% ms/iter= 45.06 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  2351MHz observed=  2745MHz 304.3W 62.0C util= 87% ms/iter= 44.44 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  1959MHz observed=  2355MHz 279.7W 61.0C util=100% ms/iter= 40.08 resp=(0.61,0.59)
+[LIVE] a=HOLD target=  3135MHz observed=  1965MHz 244.3W 60.0C util=100% ms/iter= 43.34 resp=(0.43,0.62) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 271.4W 63.0C util= 87% ms/iter= 43.05 resp=(0.50,0.55) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 306.6W 63.0C util= 88% ms/iter= 44.53 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 304.7W 63.0C util= 78% ms/iter= 44.55 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 306.0W 63.0C util= 78% ms/iter= 44.75 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  2743MHz observed=  2745MHz 310.8W 64.0C util= 87% ms/iter= 43.51 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  2351MHz observed=  2745MHz 308.9W 63.0C util= 87% ms/iter= 43.69 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  1959MHz observed=  2355MHz 259.1W 60.0C util= 89% ms/iter= 44.81 resp=(0.47,0.69)
+[LIVE] a=DEC  target=  3135MHz observed=  1965MHz 220.2W 59.0C util=100% ms/iter= 44.54 resp=(0.51,0.65) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 266.3W 63.0C util= 93% ms/iter= 41.43 resp=(0.46,0.59) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 309.4W 63.0C util= 88% ms/iter= 44.50 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 307.5W 63.0C util= 88% ms/iter= 43.82 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 314.0W 63.0C util= 95% ms/iter= 42.14 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  2743MHz observed=  2745MHz 322.6W 63.0C util= 94% ms/iter= 42.22 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  2351MHz observed=  2745MHz 315.8W 64.0C util= 91% ms/iter= 42.94 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  1959MHz observed=  2355MHz 302.1W 62.0C util=100% ms/iter= 40.81 resp=(0.56,0.55)
+[LIVE] a=HOLD target=  3135MHz observed=  1965MHz 236.1W 60.0C util=100% ms/iter= 43.92 resp=(0.43,0.73) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 288.0W 63.0C util= 91% ms/iter= 41.13 resp=(0.47,0.60) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 320.3W 64.0C util= 91% ms/iter= 42.86 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 316.5W 64.0C util= 79% ms/iter= 42.74 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 315.8W 64.0C util= 91% ms/iter= 42.80 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  2743MHz observed=  2745MHz 317.1W 64.0C util= 91% ms/iter= 42.63 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  2351MHz observed=  2745MHz 322.5W 65.0C util=100% ms/iter= 39.69 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  1959MHz observed=  2355MHz 296.4W 61.0C util=100% ms/iter= 40.41 resp=(0.48,0.59)
+[LIVE] a=HOLD target=  3135MHz observed=  1965MHz 230.4W 60.0C util= 96% ms/iter= 43.90 resp=(0.42,0.73) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 269.9W 65.0C util= 96% ms/iter= 38.70 resp=(0.44,0.58) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 318.7W 63.0C util= 77% ms/iter= 44.70 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 309.1W 63.0C util= 94% ms/iter= 44.07 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 304.9W 63.0C util= 83% ms/iter= 45.80 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  2743MHz observed=  2745MHz 291.2W 63.0C util= 79% ms/iter= 47.40 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  2351MHz observed=  2745MHz 302.2W 64.0C util= 92% ms/iter= 44.28 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  1959MHz observed=  2355MHz 263.3W 62.0C util=100% ms/iter= 44.95 resp=(0.48,0.65)
+[LIVE] a=HOLD target=  3135MHz observed=  1965MHz 224.6W 60.0C util= 94% ms/iter= 46.99 resp=(0.46,0.65) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 273.4W 63.0C util= 83% ms/iter= 46.31 resp=(0.49,0.60) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 297.5W 63.0C util= 83% ms/iter= 46.54 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 315.4W 65.0C util=100% ms/iter= 43.28 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 339.4W 65.0C util=100% ms/iter= 38.19 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  2743MHz observed=  2745MHz 343.5W 65.0C util=100% ms/iter= 39.84 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  2351MHz observed=  2745MHz 317.3W 64.0C util= 91% ms/iter= 45.50 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  1959MHz observed=  2355MHz 273.4W 62.0C util=100% ms/iter= 44.04 resp=(0.54,0.66)
+[LIVE] a=DEC  target=  3135MHz observed=  1965MHz 235.5W 60.0C util=100% ms/iter= 43.48 resp=(0.51,0.64) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 250.0W 63.0C util=100% ms/iter= 44.37 resp=(0.51,0.53) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 304.6W 63.0C util= 76% ms/iter= 45.80 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 295.3W 63.0C util= 78% ms/iter= 46.86 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  3135MHz observed=  2745MHz 296.9W 63.0C util= 78% ms/iter= 46.73 resp=(0.50,0.50) [ARBITER]
+[LIVE] a=DEC  target=  2743MHz observed=  2745MHz 296.7W 63.0C util= 84% ms/iter= 46.54 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  2351MHz observed=  2745MHz 297.7W 63.0C util= 82% ms/iter= 46.56 resp=(0.50,0.50)
+[LIVE] a=DEC  target=  1959MHz observed=  2355MHz 250.3W 61.0C util=100% ms/iter= 45.49 resp=(0.53,0.69)
+[LIVE] a=HOLD target=  1959MHz observed=  1965MHz 210.8W 59.0C util= 95% ms/iter= 48.65 resp=(0.44,0.66)
+[LIVE] a=INC  target=  3135MHz observed=  1965MHz 210.5W 60.0C util=100% ms/iter= 45.17 resp=(0.50,0.50) [ARBITER]
+
+[deploy_live] resetting clocks and exiting...

@@ -13,7 +13,67 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 5 Oct 2026, very early morning): reward-plateau fix validated BOTH offline AND on real hardware
+## IMMEDIATE NEXT STEP (as of 5 Oct 2026, early morning): repeated hardware trials reveal the reward-fix is a genuine TRADE-OFF, not a clean win
+
+**Follow-up to the single-trial re-validation directly below. That result was real but
+incomplete -- it only ran ONE trial per condition. Repeated it (3 reps each, old vs new
+checkpoint, both conditions, same resumed RTX 4090) to get real variance instead of one-off
+points, per the explicit ask after the single-trial result ("repeat the trials to get error
+bars"). The repeats tell a more complete, more honest story than the single trial did, and
+it is NOT uniformly positive.**
+
+### Setup
+`common/analysis` doesn't have this one yet -- the orchestration was a standalone shell
+script run directly on the rented VM (not committed as a repo script, since it's pure
+sequencing logic with hardcoded durations, not something else would run unchanged). Per
+condition (batch=32 compute-bound, batch=4 launch-bound): baseline sample, then 3 interleaved
+reps of 90s each for the OLD (linear-reward) checkpoint and 3 for the NEW (log-reward)
+checkpoint, baseline sample again. Raw logs: `docs/results/phase2_hardware/repeat_trials/`,
+parsed summary: `docs/results/phase2_hardware/repeat_trials_summary.csv`.
+
+### Batch=32 (compute-bound, the originally-broken case): the fix clearly, consistently helps
+| | power saving | arbiter fraction | mean INC actions |
+|---|---|---|---|
+| old (linear-reward) | +3.1% ± 5.3% (one rep negative) | 0.58 | 4.7 |
+| new (log-reward) | **+9.2% ± 1.1%** (tight, always positive) | **0.50** | **16.3** |
+
+Every single new-checkpoint rep beat every single old-checkpoint rep (9/9 pairwise
+comparisons). Not a formal significance claim at n=3, but a complete, consistent separation
+-- this is a real, robust improvement, matching the mechanism (log reward, less arbiter
+reliance, genuine self-correction) exactly as designed.
+
+### Batch=4 (launch-bound, the "clean win" case from the single trial): the fix likely makes it WORSE
+| | power saving | behaviour |
+|---|---|---|
+| old (linear-reward) | **+14.0% ± 8.0%** | mostly HOLD (96.7 mean) -- stable, settles and stays |
+| new (log-reward) | +7.4% ± 10.1% (one rep NEGATIVE) | **oscillates heavily** -- INC≈DEC≈53-56 mean, HOLD only 4.3 |
+
+Old wins on power saving on average, and the qualitative difference is the real finding here,
+not just the mean: the new policy doesn't settle on this condition the way the old one did --
+it's genuinely unstable, flipping between INC and DEC almost every tick instead of holding.
+**A single trial earlier this session (the one reported as "closes the loop cleanly") landed
+on a reasonably representative old-checkpoint-equivalent number by chance and never actually
+tested the new checkpoint on this condition at all** -- the "clean win" framing was accurate
+for what was tested, but incomplete, because the new checkpoint's behavior on THIS condition
+was never checked until these repeats.
+
+### What this means
+The fix is a genuine, real TRADE-OFF: it reliably fixes the over-aggressive downclocking on
+compute-bound workloads it was built for, but introduces a new instability on at least one
+launch-bound condition that was already working well. This is exactly the kind of thing
+repeats catch and single trials miss -- consistent with this project's own repeated lesson
+(seed variance in Phase 1, host variance in Phase 2 rentals) that one measurement is a
+anecdote, not a result. **Do not report the single-trial "closes the loop" framing from the
+entry below as the final word -- this entry supersedes it.**
+
+Not yet resolved: whether this is fixable with a smaller log-compression factor (less
+aggressive reshaping, trading back some of the compute-bound fix for launch-bound stability),
+a hybrid reward, or just an honestly-characterized limitation to report as-is. That decision
+is open -- flag it for the next session rather than guessing under time pressure this late.
+
+---
+
+## Prior next step (5 Oct 2026, very early morning, superseded by the repeated-trials finding above): reward-plateau fix validated BOTH offline AND on real hardware (single trial each -- see above for why that wasn't the full picture)
 
 **Full loop closed, same night. Fixed the root cause (flat near-optimum reward) found by
 Phase 2 hardware validation, retrained, validated offline, then went back to the SAME real
