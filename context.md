@@ -103,11 +103,60 @@ still strictly in the safe direction, but report it as a trade-off, not a clean 
 honesty standard this project has applied to the reward-plateau fix and the hill-climb
 non-reproduction. NORTHSTAR row 11 updated accordingly.
 
-**Not yet done: hardware confirmation.** Every other reward-shaping change in this
-investigation (the original log-reward fix, the repeat-trials finding) was confirmed on a
-real rented RTX 4090 before being trusted for the paper -- this one hasn't been yet. That
-needs renting a GPU again (real cost, vast.ai), so it's flagged here rather than done
-autonomously -- everything up to this point was offline/free and didn't need a pause.
+### Hardware confirmation, round 1 -- 7 Oct 2026: cycle fully fixed, cost worse than offline
+Rented a real RTX 4090 (vast.ai, VM-type template, `gpu_probe.py` confirmed `USABLE` with
+readback-verified clock lock before anything else). `common/reversal_cost_repeat_trials.sh`:
+old pure-log checkpoint vs `reversal_cost=0.30`, both Phase 2 conditions, 3 interleaved reps
+each, same protocol as every prior hardware trial this investigation. `flip_rate` (hardware
+analogue of the offline deterministic-rollout cycle check -- fraction of consecutive clock-
+target changes that reverse direction) goes from 0.885±0.10 / 0.496±0.04 (batch=4/batch=32,
+old) to **exactly 0.000 in every single rep** for the new checkpoint, both conditions --
+complete, clean confirmation that the fix works on real hardware, not just offline.
+
+**But the cost is worse than the offline aggregate metric suggested.** On batch=32
+(compute-bound, the condition log-reward was originally built for), the new checkpoint's
+actions are almost entirely INC/HOLD (zero DEC across all 3 reps) and net power saving goes
+**negative** (-1.5%±1.0%, vs old's +7.9%±0.8%) -- the fix pushes so far toward max clock it
+erases the entire benefit on this condition. batch=4 stays a net win (+3.6%±1.7%, down from
+old's +6.1%±6.6%) but far more consistent (much lower std -- no more cycling-driven noise).
+
+### Hardware confirmation, round 2 -- 7 Oct 2026: tested 0.10 and 0.20, found it's messier than a simple dial
+Trained deployable checkpoints for `reversal_cost=0.10` and `0.20` (same holdout=4090/seed=0
+protocol) to see if a less aggressive penalty lands in a better real spot. Rented a second
+RTX 4090 (same host, re-verified `USABLE`), `common/reversal_cost_low_repeat_trials.sh`: old
+vs 0.10 vs 0.20, both conditions, 3 reps each.
+
+| | batch=4 (launch-bound) | batch=32 (compute-bound) |
+|---|---|---|
+| old | +14.1%±0.4% power saving, flip_rate=0.959 | +4.5%±2.6%, flip_rate=0.503 |
+| reversal_cost=0.10 | +12.1%±3.0%, flip_rate=**0.000** | +3.9%±0.1%, flip_rate=**0.500** (unchanged) |
+| reversal_cost=0.20 | **-27.6%±1.3%** (!), flip_rate=0.000 | +3.4%±0.5%, flip_rate=0.569 (worse than old) |
+
+Two findings, neither predicted by the offline aggregate:
+1. **0.20 catastrophically fails on batch=4** -- the policy sits pinned at max clock for the
+   entire run (DEC=0, INC=0, all 3 reps), burning 27.6% MORE power than doing nothing. Looking
+   at the raw actions, this looks like single-seed noise in this specific checkpoint (it never
+   learned to step down from the max-clock deployment start state here) rather than something
+   `reversal_cost=0.20` causes systematically -- but that's a hypothesis, not yet checked.
+2. **0.10 does NOT suppress cycling on batch=32 at all on real hardware** (flip_rate 0.500,
+   statistically identical to old's 0.503), despite the offline aggregate (across 12
+   workloads/5 GPUs) showing a large reduction (cycle rate 0.103 vs much higher for pure-log).
+   The offline aggregate across the whole fleet/workload suite does not predict this one
+   specific real deployment.
+
+**This is exactly the seed-sensitivity problem this project has been burned by repeatedly**
+(action_cost's 3-seed screen vs full validation; the ablation's seed-dependent fixed-clock
+margin) -- except now showing up in REAL HARDWARE deployment outcomes from single-seed
+checkpoints, not just offline aggregate metrics. Every reversal_cost checkpoint tested on
+hardware so far (0.10, 0.20, 0.30) is a single seed=0 training run. Not yet resolved whether
+0.20's batch=4 failure is checkpoint-specific bad luck or a real property of that penalty
+strength -- testing more seeds of the more-promising 0.10 next to find out before drawing a
+final conclusion. Raw logs: `docs/results/reversal_cost_phase2_hardware/`.
+
+**Not yet done: multi-seed hardware confirmation.** Every value tested so far is one seed.
+The project's own standing rule ("single-seed results are not evidence here") applies to
+hardware deployment outcomes just as much as offline metrics -- continuing to rent and test
+more seeds before finalizing a recommended value.
 
 ---
 
