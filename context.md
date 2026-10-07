@@ -13,14 +13,87 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 7 Oct 2026): write the paper -- the limit-cycle investigation is CLOSED, reported as a known limitation
+## IMMEDIATE NEXT STEP (as of 7 Oct 2026, later the same day): the limit cycle is FIXED -- `reversal_cost`, validated 5-GPU/10-seed, checkpoint trained. Decide on hardware confirmation next.
 
-**The limit-cycle investigation (below) is done.** Three candidate fixes were tried across two
-sessions and none resolve it: `reward_power` made cycling worse, `action_cost` looked good at
-3 seeds but regressed at 10, and now a deployment-side debounce (this session) doesn't resolve
-it either -- it only stretches the cycle's period, confirmed by direct mechanism inspection,
-not guessed. Per the explicit plan for this session, this is reported honestly as a known
-limitation rather than chased further, and work moves to Phase 2: the paper draft.
+**Supersedes the "report as a known limitation, write the paper" entry directly below.** After
+three failed candidates (reward_power, action_cost, deployment-side debounce -- all documented
+below), a fourth idea, tried at the user's explicit request to keep going rather than settle
+for the characterized-limitation framing, actually works.
+
+### The idea: penalise reversing direction, not every move
+`action_cost` (already tried, didn't hold up) penalises every non-HOLD action equally --
+which also taxes a genuine one-way correction, not just the back-and-forth. The limit cycle
+is specifically a MUTUAL attraction between two adjacent clock levels (from A, B looks better;
+from B, A looks better) -- so the natural, more targeted fix is to penalise only the SPECIFIC
+move that creates that loop: choosing the opposite direction from the last non-HOLD action
+(INC right after DEC, or vice versa). New `train_unified_v2.Cfg.reversal_cost` knob, applied
+in the training loop's reward (`common/train_unified_v2.py`).
+
+### Screening, then full validation (same two-stage rigor as every other candidate this
+investigation, because a 3-seed screen has misled before -- see `action_cost`'s own history)
+3-seed screen on the RTX 4090 holdout only (`common/analysis/reversal_cost_sweep.py`): cycle
+rate dropped from the pure-log problem's 0.53 to as low as 0.03 at `reversal_cost=0.05`. **The
+screen's own favourite value did NOT hold up at full scale** (the recurring lesson of this
+whole investigation): full 5-GPU leave-one-GPU-out, 10 seeds, checking cycle rate on EVERY
+held-out GPU this time, not just the one the screen used
+(`common/analysis/reversal_cost_validate.py`, swept over {0.05, 0.10, 0.20, 0.30, 0.40, 0.60}):
+
+| reversal_cost | cycle rate | ss_mean | ss_std |
+|---|---|---|---|
+| 0.05 | 0.182 | 0.040 | 0.040 |
+| 0.10 | 0.103 | 0.040 | 0.034 |
+| 0.20 | 0.055 | 0.055 | 0.054 |
+| **0.30** | **0.022** | **0.049** | 0.047 |
+| 0.40 | 0.017 | 0.053 | 0.056 |
+| 0.60 | 0.007 | 0.060 | 0.055 |
+
+Cycle rate drops monotonically with `reversal_cost` -- essentially solved by 0.30 (three of
+five GPUs hit exactly zero cycling across all 10 seeds by 0.60). Cost (`ss_mean`) plateaus
+around 0.05-0.06 from 0.20 onward instead of continuing to climb. A PAIRED comparison (same
+GPU+seed, `common/analysis/reversal_cost_summary.py`) confirms 0.30 is not reliably beaten on
+cost by 0.40 or 0.60 (24/50 and 22/50 -- close to a coin flip), while those larger values
+mostly just TIE 0.30 on cycle rate rather than beat it (38/50 and 41/50 ties) -- i.e. pushing
+past 0.30 buys almost nothing further and isn't clearly cheaper either. **`reversal_cost=0.30`
+selected as the sweet spot**, not the largest value tested.
+
+### The one check that matters most: did this undo the thing log-reward was built to fix?
+The log-reward fix exists to stop the policy settling into the hardware-measured-costly clock
+range on `pt_resnet50_train`/RTX 4090 (the original Phase 2 finding). A fix for cycling that
+achieves it by making the policy too timid to move at all would silently regress this.
+Checked directly (`common/analysis/reversal_cost_checkpoint.py`, which also trains the actual
+deployable checkpoint, same protocol as every other deployed checkpoint -- holdout=4090,
+seed=0): **`pt_resnet50_train` still settles at core_frac=0.866, IDENTICAL to the pure-log
+checkpoint's safe settling point** (vs the old linear checkpoint's unsafe 0.737). The fix for
+the symptom did not cost the thing it was protecting. This specific checkpoint (seed=0) shows
+2/12 residual cycling, roughly matching the 10-seed average (0.022 -> ~0.26/12) -- normal
+single-seed variance, not a regression; checkpoint saved at
+`common/weights/reversal_cost_030_fix_holdout_nvidia_geforce_rtx_4090.pth`.
+
+### Verdict and what's left
+**The limit cycle is fixed, offline, with full 5-GPU/10-seed rigor and the critical safety
+check passing.** This is a genuine result, not a characterized limitation to write around --
+reported as such now (NORTHSTAR row 11 updated, no longer "closed as limitation").
+
+**Not yet done: hardware confirmation.** Every other reward-shaping change in this
+investigation (the original log-reward fix, the repeat-trials finding) was confirmed on a
+real rented RTX 4090 before being trusted for the paper -- this one hasn't been yet. That
+needs renting a GPU again (real cost, vast.ai), so it's flagged here rather than done
+autonomously -- everything up to this point was offline/free and didn't need a pause.
+
+---
+
+## Prior next step (7 Oct 2026, superseded same day by the reversal_cost fix above): write the paper -- the limit-cycle investigation was (temporarily) CLOSED, reported as a known limitation
+
+**This was superseded a few hours later the same day** -- a fourth candidate fix
+(`reversal_cost`, see the entry above this one) was tried and actually works. Kept here for
+the historical record of what was tried and why it looked like a dead end at the time; do not
+treat the "write the paper" framing below as current.
+
+**The limit-cycle investigation (below) looked done at this point.** Three candidate fixes had
+been tried across two sessions and none resolved it: `reward_power` made cycling worse,
+`action_cost` looked good at 3 seeds but regressed at 10, and a deployment-side debounce (this
+session) didn't resolve it either -- it only stretches the cycle's period, confirmed by direct
+mechanism inspection, not guessed.
 
 ### What was tried this session: deployment-side debounce (common/deploy_live.py)
 No retraining -- a pure deployment guard: require the policy to choose the same non-HOLD

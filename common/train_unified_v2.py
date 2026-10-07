@@ -114,6 +114,18 @@ class Cfg:
                           # after repeated hardware trials found the pure-log
                           # fix (reward_power=0) trades compute-bound stability
                           # for launch-bound oscillation (context.md, 5 Oct).
+    reversal_cost=0.0    # Penalise choosing the OPPOSITE direction from the
+                          # last non-HOLD move (INC right after DEC, or vice
+                          # versa). Unlike action_cost (penalises every
+                          # non-HOLD move uniformly, tried and found not to
+                          # fix the limit cycle -- see
+                          # common/analysis/reward_shape_sweep.py), this
+                          # targets the specific mechanism behind the cycle:
+                          # two adjacent clock levels each looking like the
+                          # better move FROM the other, a mutual attraction a
+                          # flat per-move cost doesn't discourage any more
+                          # than it discourages genuine one-way corrections.
+                          # See common/analysis/reversal_cost_sweep.py.
 
     def __init__(self, **kw):
         for k, v in kw.items():
@@ -173,6 +185,7 @@ def train(holdout_gpu, cfg=None, seed=0, datasets=None, verbose=False):
         obs0 = augmented_obs(W, i, None, cfg.use_response)
         stack = np.repeat(obs0[None, :], STACK_SIZE, axis=0)
         total = 0.0
+        last_dir = None  # last non-HOLD action direction this episode (0=dec, 1=inc)
 
         for t in range(cfg.steps):
             if np.random.rand() <= eps:
@@ -188,7 +201,11 @@ def train(holdout_gpu, cfg=None, seed=0, datasets=None, verbose=False):
             obs = augmented_obs(W, j, i, cfg.use_response)
             nxt = np.concatenate([stack[1:], obs[None, :]], axis=0)
             moved = (a != 2) if not cfg.abs_actions else (abs(tracked - float(core[i])) > 1e-9)
-            r = (rew_arr[j] - (cfg.action_cost if moved else 0.0)) * cfg.reward_scale
+            reversed_dir = (not cfg.abs_actions) and a in (0, 1) and last_dir is not None and a != last_dir
+            if a in (0, 1):
+                last_dir = a
+            r = (rew_arr[j] - (cfg.action_cost if moved else 0.0)
+                 - (cfg.reversal_cost if reversed_dir else 0.0)) * cfg.reward_scale
             # Fix (1): time-limit truncation is NOT termination. This env never
             # terminates, so the bootstrap is always kept alive.
             mem.append((stack, a, r, nxt, 0.0))
