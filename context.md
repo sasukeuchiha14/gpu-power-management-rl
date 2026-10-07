@@ -13,6 +13,19 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
+## Since the entry below (6 Oct 2026): a presentation demo was built, no research state changed
+
+Rented the same RTX 4090 again, ran the ALREADY-VALIDATED original response-aware checkpoint
+(not the experimental log-reward/action_cost ones below -- those are still unresolved) against
+the launch-bound condition, logged power at a clean fixed interval for a before/after
+comparison, and published it as a chart for a non-technical demo (advisor presentation).
+Result: 109.3W -> 78.2W, 28.5% power reduction, same workload, matches everything already
+validated about this condition. Instance destroyed immediately after. This did NOT touch the
+open investigation below -- `common/demo_power_trace.sh`, `docs/demo_power_trace.html`,
+`docs/results/demo_trace/`. **The next step is still the one below**, unchanged by this.
+
+---
+
 ## IMMEDIATE NEXT STEP (as of 5 Oct 2026, very early morning, session paused here): fixing the limit-cycle problem is still OPEN -- candidate found promising in screening, did not hold up at full validation
 
 **Follow-up to the repeated-trials finding directly below (the launch-bound limit-cycle
