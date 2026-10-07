@@ -69,6 +69,32 @@ CORE_STRIDE_FRAC = 0.125
 ARB_PATIENCE = 3
 ARB_COOLDOWN = 5
 ARB_UTIL_THRESHOLD = 85.0
+# Debounce (context.md "IMMEDIATE NEXT STEP", 5-7 Oct 2026): a deployment-side
+# attempt at the limit-cycle problem (a trained policy genuinely oscillating
+# between two adjacent clock levels, confirmed via deterministic rollout --
+# see common/analysis/reward_shape_sweep.py). Two reward-shaping fixes were
+# tried first and didn't hold up (reward_power made it worse; action_cost
+# looked good at 3 seeds but regressed at 10). This targets the SYMPTOM
+# instead of the reward cause: require the policy to choose the same
+# non-HOLD action N ticks in a row before a clock change actually commits.
+#
+# VALIDATED OFFLINE, DOES NOT WORK (common/analysis/debounce_validate.py):
+# debouncing does not break the cycle, it only STRETCHES ITS PERIOD. At a
+# frozen setpoint the policy sees an identical ("neutral response") input
+# every tick, so it keeps re-choosing the same action until the streak hits
+# N, commits one step, flips the response sign, and the same thing happens
+# in the other direction -- confirmed directly by inspecting the rollout
+# traces at N=1/3/10 (period 2, then ~6, then ~18-20). Checked out to N=40
+# over a 300-step rollout: still 9/12 workloads cycling, same count as
+# N=3-10, with the aggregate steady-state metric getting WORSE as N grows
+# (0.079 at N=1 to ~0.12 at N=10) because the forced delay also slows
+# genuinely beneficial moves. There is no N that fixes this; larger N only
+# trades oscillation frequency for responsiveness. Left here, default OFF
+# (N=1), as a documented negative result and because a long streak
+# requirement might still be worth trying deliberately in a follow-up
+# (e.g. combined with a smaller action stride) -- not because it's expected
+# to work as-is.
+DEBOUNCE_N = 1
 
 
 def _wait_for_fresh_status(status_file, last_step, timeout_s):
@@ -91,7 +117,7 @@ def _wait_for_fresh_status(status_file, last_step, timeout_s):
 
 
 class LiveController:
-    def __init__(self, weights_path, status_file, gpu_index=0, live=False):
+    def __init__(self, weights_path, status_file, gpu_index=0, live=False, debounce_n=DEBOUNCE_N):
         self.live = live
         self.status_file = status_file
 
@@ -114,6 +140,9 @@ class LiveController:
 
         self.core_stride_mhz = CORE_STRIDE_FRAC * self.hw["max_core_mhz"]
         self.current_core_mhz = self.hw["max_core_mhz"]  # start at max, like every offline episode start option
+        self.debounce_n = debounce_n
+        self.pending_action = None
+        self.pending_count = 0
         self.last_step = -1
         self.prev_core_frac = None
         self.prev_ms_per_iter = None
@@ -139,6 +168,20 @@ class LiveController:
         except (AttributeError, pynvml.NVMLError):
             subprocess.run(["nvidia-smi", "-lgc", f"{int(self.current_core_mhz)},{int(self.current_core_mhz)}"],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def debounce(self, action):
+        """Returns the action to actually act on: `action` once it has been
+        chosen `self.debounce_n` ticks in a row, HOLD otherwise. A policy that
+        alternates between two actions every tick never reaches the streak
+        length, so the clock stays put instead of cycling."""
+        if action == self.pending_action:
+            self.pending_count += 1
+        else:
+            self.pending_action = action
+            self.pending_count = 1
+        if action == 2 or self.pending_count >= self.debounce_n:
+            return action
+        return 2  # HOLD -- streak not long enough yet to commit
 
     def reset_clocks(self):
         try:
@@ -178,7 +221,8 @@ class LiveController:
             self.set_clocks(self.hw["max_core_mhz"] * 0.3)
             return
 
-        action = self.agent.act(state)
+        raw_action = self.agent.act(state)
+        action = self.debounce(raw_action)
         if action == 0:
             requested = self.current_core_mhz - self.core_stride_mhz
         elif action == 1:
@@ -195,10 +239,11 @@ class LiveController:
 
         tag = "[LIVE]" if self.live else "[DRY_RUN]"
         arb = " [ARBITER]" if tripped or overridden else ""
+        deb = f" [DEBOUNCED {['DEC','INC','HOLD'][raw_action]}->HOLD]" if action != raw_action else ""
         print(f"{tag} a={['DEC','INC','HOLD'][action]:<4} target={self.current_core_mhz:6.0f}MHz "
               f"observed={raw['core_mhz']:6.0f}MHz {raw['power_w']:5.1f}W {raw['temp_c']:4.1f}C "
               f"util={raw['gpu_util']:3.0f}% ms/iter={fresh['ms_per_iter']:6.2f} "
-              f"resp=({resp[0]:.2f},{resp[1]:.2f}){arb}")
+              f"resp=({resp[0]:.2f},{resp[1]:.2f}){arb}{deb}")
 
 
 def main():
@@ -208,9 +253,13 @@ def main():
     ap.add_argument("--status-file", default="/tmp/dvfs_workload_status.json")
     ap.add_argument("--gpu-index", type=int, default=0)
     ap.add_argument("--live", action="store_true", help="actually lock clocks (default: observe only)")
+    ap.add_argument("--debounce-n", type=int, default=DEBOUNCE_N,
+                    help="consecutive identical non-HOLD actions required before a clock "
+                         "change commits (limit-cycle mitigation; 1 = no debounce)")
     a = ap.parse_args()
 
-    controller = LiveController(a.weights, a.status_file, a.gpu_index, live=a.live)
+    controller = LiveController(a.weights, a.status_file, a.gpu_index, live=a.live,
+                                 debounce_n=a.debounce_n)
 
     def handle_exit(signum, frame):
         print("\n[deploy_live] resetting clocks and exiting...")

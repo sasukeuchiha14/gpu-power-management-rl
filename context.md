@@ -13,6 +13,69 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
+## IMMEDIATE NEXT STEP (as of 7 Oct 2026): write the paper -- the limit-cycle investigation is CLOSED, reported as a known limitation
+
+**The limit-cycle investigation (below) is done.** Three candidate fixes were tried across two
+sessions and none resolve it: `reward_power` made cycling worse, `action_cost` looked good at
+3 seeds but regressed at 10, and now a deployment-side debounce (this session) doesn't resolve
+it either -- it only stretches the cycle's period, confirmed by direct mechanism inspection,
+not guessed. Per the explicit plan for this session, this is reported honestly as a known
+limitation rather than chased further, and work moves to Phase 2: the paper draft.
+
+### What was tried this session: deployment-side debounce (common/deploy_live.py)
+No retraining -- a pure deployment guard: require the policy to choose the same non-HOLD
+action `N` ticks in a row before a clock change actually commits (`LiveController.debounce()`).
+The idea: a policy alternating DEC/INC every tick never reaches the streak, so the clock sits
+still instead of cycling.
+
+**Result: does not work, and the reason is mechanistic, not a tuning miss.** Offline validation
+(`common/analysis/debounce_validate.py`, reusing `reward_shape_sweep.py`'s exact deterministic-
+rollout cycle check on the same checkpoint already confirmed to cycle on 10/12 workloads,
+`log_reward_response_aware_holdout_nvidia_geforce_rtx_4090.pth`) swept `debounce_n` in
+{1,2,3,4,5,7,10,20,40}:
+
+| debounce_n | cycle rate (12 workloads) | steady-state scaled EDP |
+|---|---|---|
+| 1 (no debounce) | 10/12 | 0.0787 |
+| 2 | 10/12 | 0.0777 |
+| 3 | 9/12 | 0.1162 |
+| 5 | 9/12 | 0.1160 |
+| 10 | 9/12 | 0.1208 |
+| 20, 40 (300-step rollout, last-40 window) | 9/12 | -- |
+
+**Debouncing doesn't break the cycle, it only stretches its period.** Confirmed by inspecting
+the raw rollout traces directly, not just the aggregate count: at a frozen setpoint the policy
+sees an identical ("neutral response") observation every tick, so it keeps re-choosing the
+same action until the streak hits `N`, commits one step, the response sign flips, and the same
+thing happens in the other direction. Observed period goes from 2 (n=1) to ~6 (n=3) to ~18-20
+(n=10) -- scaling with `N` as that mechanism predicts. Pushed to n=40 over a 300-step rollout
+specifically to check whether a long-enough streak requirement eventually breaks the attractor
+instead of just slowing it: **it doesn't -- still 9/12 cycling**, the same floor every
+`debounce_n >= 3` hits. Meanwhile the aggregate steady-state metric gets *worse* as `N` grows
+(0.079 to ~0.12) because the same forced delay also slows genuinely beneficial moves, not just
+the oscillatory ones. **There is no `N` that fixes this.**
+
+Given this is decisive and mechanistic (not noisy or seed-sensitive the way the two earlier
+candidates were), no hardware rental was spent confirming it -- the offline deterministic
+rollout is the more rigorous test here (exhaustive, zero noise) and a hardware trial would
+only have re-measured a result already understood at the mechanism level. `DEBOUNCE_N` in
+`common/deploy_live.py` defaults to `1` (off) with the finding documented inline; the flag
+(`--debounce-n`) is left in place for anyone who wants to experiment further (e.g. combined
+with a smaller action stride), but is not recommended as-is.
+
+### Verdict -- reported honestly as a known limitation
+Three independent fix attempts (reward shaping x2, deployment-side debounce x1) across two
+sessions, all offline/mechanistic where possible to avoid burning rented-GPU time on dead
+ends. None resolve the limit cycle. The mechanism itself is well understood (a genuine
+closed-loop attractor between two adjacent clock levels under the log-scale reward fix, see
+below) even though no fix for it was found. This is the right place to stop investigating and
+report it as a characterized limitation of the log-reward checkpoint, not an unqualified
+success -- exactly the kind of honest trade-off this project has surfaced and reported
+correctly several times already (the reward-plateau fix, the hand-coded hill-climb
+non-reproduction). **NORTHSTAR row 11 updated accordingly. Next: Phase 2, the paper draft.**
+
+---
+
 ## Since the entry below (6 Oct 2026): a presentation demo was built, no research state changed
 
 Rented the same RTX 4090 again, ran the ALREADY-VALIDATED original response-aware checkpoint
@@ -26,7 +89,7 @@ open investigation below -- `common/demo_power_trace.sh`, `docs/demo_power_trace
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 5 Oct 2026, very early morning, session paused here): fixing the limit-cycle problem is still OPEN -- candidate found promising in screening, did not hold up at full validation
+## Prior next step (5 Oct 2026, very early morning, superseded by the 7 Oct closure above): fixing the limit-cycle problem is still OPEN -- candidate found promising in screening, did not hold up at full validation
 
 **Follow-up to the repeated-trials finding directly below (the launch-bound limit-cycle
 problem). Session paused mid-investigation by explicit user request ("stop for now, continue
