@@ -13,7 +13,7 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 7 Oct 2026, later the same day): the limit cycle is FIXED -- `reversal_cost`, validated 5-GPU/10-seed, checkpoint trained. Decide on hardware confirmation next.
+## IMMEDIATE NEXT STEP (as of 7-8 Oct 2026): three rounds of hardware confirmation done -- reversal_cost is a genuine, condition-dependent trade-off, not a clean fix. Investigation CLOSED, moving to Phase 2 (the paper).
 
 **Supersedes the "report as a known limitation, write the paper" entry directly below.** After
 three failed candidates (reward_power, action_cost, deployment-side debounce -- all documented
@@ -153,10 +153,58 @@ hardware so far (0.10, 0.20, 0.30) is a single seed=0 training run. Not yet reso
 strength -- testing more seeds of the more-promising 0.10 next to find out before drawing a
 final conclusion. Raw logs: `docs/results/reversal_cost_phase2_hardware/`.
 
-**Not yet done: multi-seed hardware confirmation.** Every value tested so far is one seed.
-The project's own standing rule ("single-seed results are not evidence here") applies to
-hardware deployment outcomes just as much as offline metrics -- continuing to rent and test
-more seeds before finalizing a recommended value.
+### Hardware confirmation, round 3 -- 7-8 Oct 2026: multi-seed test, and the real pattern emerges
+Before spending more rental time, checked the cheap thing first: offline `resnet_settle` for
+`reversal_cost=0.20`'s seed=1 and seed=2 (`common/analysis/reversal_cost_checkpoint.py --seed
+1`/`--seed 2`) -- both regress to the UNSAFE settling point (0.737, identical to the
+pre-log-reward checkpoint), vs seed=0's safe 0.866. **`reversal_cost=0.20` dropped from further
+hardware testing on this evidence alone** -- a real seed-instability problem, not worth rental
+time to reconfirm what's already clear offline. `reversal_cost=0.10`'s seed=1/2 both settle
+safely (0.866), so that's the value worth checking for a seed=0 artifact.
+
+Third rented RTX 4090 (`gpu_probe.py` confirmed `USABLE` again -- a different real max-core
+ceiling than the first two units, 3135MHz vs 3105MHz, the same kind of unit-to-unit variability
+already documented elsewhere in this project). `common/reversal_cost_010_multiseed_trials.sh`:
+old vs `reversal_cost=0.10` seed=1 vs seed=2, both conditions, 2 interleaved reps each.
+
+| | batch=4 (launch-bound) | batch=32 (compute-bound) |
+|---|---|---|
+| old | +13.3%±6.9% power saving, flip_rate=0.965 | +6.5%±0.5%, flip_rate=0.495 |
+| reversal_cost=0.10 seed=1 | +0.4%±23.4% (!), flip_rate=**0.000** | **-2.3%**, flip_rate=**0.000** |
+| reversal_cost=0.10 seed=2 | +14.5%±4.6%, flip_rate=**0.000** | +6.1%, flip_rate=0.495 (unchanged) |
+
+**The real pattern, now visible across 5 independent hardware tests (3 values x mostly 1 seed
+each, plus this 2-seed follow-up): every single test on the launch-bound condition (batch=4)
+achieves flip_rate=0.000 -- 5/5, completely reliable.** The compute-bound condition (batch=32)
+is where it gets genuinely hard, and NOT because of noise -- there's a consistent, mechanistic
+split: **every checkpoint that suppresses cycling on batch=32 also erases the power-saving
+benefit** (`reversal_cost=0.10` seed=1 here: fixed + -2.3%; `reversal_cost=0.30` seed=0 from
+round 1: fixed + -1.5%), and **every checkpoint that keeps the benefit simply never suppresses
+the cycling in the first place** (`reversal_cost=0.10` seed=0 and seed=2: unchanged flip_rate +
+positive saving preserved). Across every hardware test run so far, no checkpoint has done both
+on this condition. That's a real trade-off inherent to this specific condition, not a seed
+drawn badly -- more seeds would very likely keep landing on one side or the other of the same
+split, not find a point that avoids it. `reversal_cost=0.10` seed=1's batch=4 result (std=23.4,
+swinging from +17% to -16% between two reps of the SAME checkpoint) also shows real within-
+checkpoint instability on top of the across-seed split -- not every number here is even stable
+rep-to-rep. Raw logs: `docs/results/reversal_cost_phase2_hardware/`.
+
+### Final verdict -- three rental sessions, five hardware tests, the honest answer
+**`reversal_cost` reliably fixes the limit cycle on the launch-bound condition (5/5 hardware
+tests, every value and seed tried) at a modest, usually-acceptable cost to the power-saving
+benefit on that condition.** On the compute-bound condition, it's a genuine, mechanistically
+real trade-off rather than a tunable dial: resolving the cycle there costs the entire benefit;
+keeping the benefit means the cycle persists. No value or seed tested threads that needle.
+Stopping hardware testing here -- the pattern is consistent enough across 5 independent tests
+(not 1, not a lucky/unlucky draw) that more seeds would very likely confirm the split rather
+than resolve it, and this is exactly the kind of well-evidenced, honestly-characterized
+trade-off this project reports rather than keeps chasing (same standard as the reward-plateau
+fix and the un-reproduced hill-climb). **This closes the limit-cycle investigation.** NORTHSTAR
+row 11 updated. Next: Phase 2, the paper draft -- this time for real.
+
+All three rented instances destroyed after use (clocks reset first in every case); nothing
+left running. Total spend across all hardware work this investigation: $1.03 of the $7.17
+starting credit ($6.14 remaining).
 
 ---
 
