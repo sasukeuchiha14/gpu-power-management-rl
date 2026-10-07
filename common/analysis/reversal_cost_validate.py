@@ -69,16 +69,19 @@ def _job(t):
     net, _ = train(gpu, cfg, seed=seed, datasets={g: DS[g] for g in FIVE_GPU_FLEET})
     agent = GreedyAgent(net)
 
-    n_cycle = 0
+    n_cycle, resnet_settle = 0, None
     for wl, W in sorted(PREP[gpu].items()):
         trace = rollout_trace(agent, W)
         if len(set(trace[-20:])) > 1:
             n_cycle += 1
+        if wl == "pt_resnet50_train":
+            resnet_settle = float(W["core"][trace[-1]])
 
     pol = P.p_agent(agent)
     tr, ss, _ = P.evaluate_policy(PREP[gpu], pol, use_response=True)
     return dict(policy=f"log-reward + reversal_cost={reversal_cost}", gpu=gpu, seed=seed,
-                n_cycling=n_cycle, n_total=len(PREP[gpu]), traj=tr, ss=ss)
+                n_cycling=n_cycle, n_total=len(PREP[gpu]), resnet_settle=resnet_settle,
+                traj=tr, ss=ss)
 
 
 def main():
@@ -104,6 +107,7 @@ def main():
     print("\n=== per-GPU: cycle rate, steady-state scaled EDP ===")
     agg = d.groupby("gpu").agg(
         cycle_rate=("n_cycling", lambda x: (x / d.loc[x.index, "n_total"]).mean()),
+        resnet_settle_mean=("resnet_settle", "mean"),
         ss_mean=("ss", "mean"), ss_std=("ss", "std"),
     ).round(4)
     print(agg.to_string())

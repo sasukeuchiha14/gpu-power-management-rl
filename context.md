@@ -56,23 +56,52 @@ mostly just TIE 0.30 on cycle rate rather than beat it (38/50 and 41/50 ties) --
 past 0.30 buys almost nothing further and isn't clearly cheaper either. **`reversal_cost=0.30`
 selected as the sweet spot**, not the largest value tested.
 
-### The one check that matters most: did this undo the thing log-reward was built to fix?
+### The check that matters most, done properly, and a self-correction
 The log-reward fix exists to stop the policy settling into the hardware-measured-costly clock
 range on `pt_resnet50_train`/RTX 4090 (the original Phase 2 finding). A fix for cycling that
 achieves it by making the policy too timid to move at all would silently regress this.
-Checked directly (`common/analysis/reversal_cost_checkpoint.py`, which also trains the actual
-deployable checkpoint, same protocol as every other deployed checkpoint -- holdout=4090,
-seed=0): **`pt_resnet50_train` still settles at core_frac=0.866, IDENTICAL to the pure-log
-checkpoint's safe settling point** (vs the old linear checkpoint's unsafe 0.737). The fix for
-the symptom did not cost the thing it was protecting. This specific checkpoint (seed=0) shows
-2/12 residual cycling, roughly matching the 10-seed average (0.022 -> ~0.26/12) -- normal
-single-seed variance, not a regression; checkpoint saved at
-`common/weights/reversal_cost_030_fix_holdout_nvidia_geforce_rtx_4090.pth`.
+
+**First pass got this wrong by trusting a single seed.** Checked only the one deployable
+checkpoint (`common/analysis/reversal_cost_checkpoint.py`, holdout=4090, seed=0) and reported
+"settles at 0.866, IDENTICAL to the pure-log checkpoint's safe settling point (0.866)." That
+pure-log 0.866 number was itself a single seed from an earlier session -- exactly the kind of
+single-measurement trust this investigation has been burned by repeatedly. Also found a
+genuinely worse sign while testing a combo candidate (`reward_power=0.25` +
+`reversal_cost=0.40`): `pt_resnet50_train` settled at EXACTLY max clock (core_frac=1.0, no
+downclocking at all) on 3 of 5 held-out GPUs -- a real failure mode (over-conservatism), even
+though cycling was equally well suppressed. That finding forced a proper re-check of the
+selected `reversal_cost=0.30` candidate too, not just the combo.
+
+**Redone with full 5-GPU/10-seed rigor on BOTH checkpoints**
+(`common/analysis/reversal_cost_validate.py` now also tracks `resnet_settle` per GPU;
+`common/analysis/pure_log_settle_baseline.py` fills in the missing pure-log-reward comparison
+the fleet never had before this):
+
+| GPU | pure log-reward settle (10-seed avg) | `reversal_cost=0.30` settle | cycle rate (pure-log -> fixed) |
+|---|---|---|---|
+| 3060 | 0.790 | 0.919 | 0.308 -> 0.008 |
+| 3070 | 0.840 | 0.943 | 0.450 -> 0.000 |
+| 3080 | 0.614 | 0.666 | 0.392 -> 0.008 |
+| 3090 | 0.797 | **1.000** | 0.550 -> 0.017 |
+| 4090 | 0.748 | 0.866 | 0.492 -> 0.075 |
+
+**The settle point rises on every single GPU under `reversal_cost`, not just the one combo
+candidate that got rejected.** This is a real, systematic, non-noisy effect: the fix trades
+away some of log-reward's power-saving aggressiveness for stability, visible concretely here
+and already visible more abstractly in the rising `ss_mean` (0.025 for pure log-reward ->
+0.049 for `reversal_cost=0.30`) reported above -- same trade-off, two views of it. Max clock
+is always the SAFE direction (same direction log-reward was already pushing, just further, and
+the same direction the original do-no-harm arbiter defaults to), so this is not a correctness
+or safety regression -- but it is a genuine, quantified efficiency cost, not a free fix, and
+the earlier "identical to the safe point" framing overstated how clean this result is.
 
 ### Verdict and what's left
-**The limit cycle is fixed, offline, with full 5-GPU/10-seed rigor and the critical safety
-check passing.** This is a genuine result, not a characterized limitation to write around --
-reported as such now (NORTHSTAR row 11 updated, no longer "closed as limitation").
+**The limit cycle is resolved, offline, with full 5-GPU/10-seed rigor -- at a real, honestly
+quantified cost in downclocking aggressiveness, not for free.** This is still a genuine
+improvement over the three failed candidates (none of which fixed the cycle at ANY cost), and
+still strictly in the safe direction, but report it as a trade-off, not a clean win -- the same
+honesty standard this project has applied to the reward-plateau fix and the hill-climb
+non-reproduction. NORTHSTAR row 11 updated accordingly.
 
 **Not yet done: hardware confirmation.** Every other reward-shaping change in this
 investigation (the original log-reward fix, the repeat-trials finding) was confirmed on a
