@@ -61,7 +61,8 @@ def main():
     _, ss, _ = P.evaluate_policy(prep, pol, use_response=True)
 
     tag = f"reversal_cost_{a.reversal_cost:.2f}".replace(".", "")
-    out = f"{REPO}/common/weights/{tag}_fix_holdout_{HOLDOUT}.pth"
+    seed_suffix = "" if a.seed == 0 else f"_seed{a.seed}"
+    out = f"{REPO}/common/weights/{tag}_fix_holdout_{HOLDOUT}{seed_suffix}.pth"
     torch.save(net.state_dict(), out)
     print(f"cycle_rate={n_cycle}/{len(prep)}  pt_resnet50_train_settle={resnet_settle:.3f}  "
           f"ss={ss:.4f}")
