@@ -186,10 +186,14 @@ class PhaseStats:
         return self.sum / self.n if self.n else 0.0
 
 
+LABEL_W = 7  # width of the fixed y-axis label gutter, e.g. "  354 ┤"
+
+
 def build_frame(console, name, hw, live_flag, current_phase, phase_remaining,
                  times, powers, phases, stats, current_power):
-    width = max(40, console.width - 4)
-    graph_cols = width - 2
+    # panel chrome eats: 1 border + 1 padding char on each side = 4; leave a
+    # little extra margin so nothing ever wraps mid-row
+    graph_cols = max(20, console.width - LABEL_W - 8)
     graph_rows = 14
     canvas = BrailleCanvas(graph_cols, graph_rows)
 
@@ -208,16 +212,37 @@ def build_frame(console, name, hw, live_flag, current_phase, phase_remaining,
                         for v, idx in zip(rs_power, rs_phase_idx)]
         canvas.draw_series(without_series, lo, hi, WITHOUT_COLOR)
         canvas.draw_series(with_series, lo, hi, WITH_COLOR)
-        y_label_hi, y_label_lo = f"{hi:.0f}W", f"{lo:.0f}W"
+        y_label_hi, y_label_mid, y_label_lo = f"{hi:.0f}", f"{(hi+lo)/2:.0f}", f"{lo:.0f}"
+        t_span = max(times[-1] - times[0], 1e-6) if len(times) > 1 else 0.0
     else:
-        y_label_hi, y_label_lo = "", ""
+        y_label_hi, y_label_mid, y_label_lo = "", "", ""
+        t_span = 0.0
 
     graph_lines = canvas.render()
-    graph_group = []
+    graph_group = [Text("  Power (W)", style=f"bold {DIM}")]
+    mid_row = len(graph_lines) // 2
     for i, line in enumerate(graph_lines):
-        label = Text(f"{y_label_hi:>6} ", style=DIM) if i == 0 else \
-            (Text(f"{y_label_lo:>6} ", style=DIM) if i == len(graph_lines) - 1 else Text("       "))
+        if i == 0:
+            label = Text(f"{y_label_hi:>5} ┤", style=DIM)
+        elif i == len(graph_lines) - 1:
+            label = Text(f"{y_label_lo:>5} ┤", style=DIM)
+        elif i == mid_row:
+            label = Text(f"{y_label_mid:>5} ┤", style=DIM)
+        else:
+            label = Text("      │", style=DIM)
         graph_group.append(label + line)
+
+    # x-axis: a tick row + elapsed-time labels spanning the visible window
+    axis_row = Text("      └" + "─" * canvas.cols, style=DIM)
+    graph_group.append(axis_row)
+    left_label = f"-{t_span:.0f}s"
+    right_label = "now"
+    pad = max(1, canvas.cols - len(left_label) - len(right_label))
+    time_row = Text("       " + left_label, style=DIM)
+    time_row.append(" " * pad)
+    time_row.append(right_label, style=DIM)
+    graph_group.append(time_row)
+    graph_group.append(Align.center(Text("Time (seconds ago)", style=f"bold {DIM}")))
 
     phase_color = WITHOUT_COLOR if current_phase == "WITHOUT" else WITH_COLOR
     legend = Text()
@@ -277,7 +302,7 @@ def build_frame(console, name, hw, live_flag, current_phase, phase_remaining,
     layout = Layout()
     layout.split_column(
         Layout(Panel(header, border_style=DIM), size=4),
-        Layout(graph_panel, size=graph_rows + 4),
+        Layout(graph_panel, size=graph_rows + 11),
         Layout(stats_panel, size=9),
         Layout(footer, size=1),
     )
