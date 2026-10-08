@@ -197,6 +197,15 @@ class LiveController:
             return
         self.last_step = fresh["step"]
 
+        # Decision-latency measurement (NORTHSTAR row 8): times only the
+        # control work itself -- NVML telemetry read through the clock
+        # write -- not the _wait_for_fresh_status() block above, which is
+        # bottlenecked by the WORKLOAD's own reporting cadence (by design,
+        # see LOOP_MS's comment) and isn't part of what "decision latency"
+        # means. This is the real-hardware analogue of the old per-card
+        # daemon's measured 70-90ms dt_ms figure, against THIS daemon's own
+        # architecture, not a hand-wave from a mocked-NVML bench.
+        _t0 = time.perf_counter()
         raw = self._read_telemetry()
         base = build_features(raw["core_mhz"], raw["gpu_util"], raw["mem_util"],
                                raw["power_w"], raw["temp_c"], raw["vram_mb"], self.hw)
@@ -236,6 +245,7 @@ class LiveController:
             core_max_mhz=self.hw["max_core_mhz"], requested_core_mhz=requested,
         )
         self.set_clocks(target)
+        tick_ms = (time.perf_counter() - _t0) * 1000.0
 
         tag = "[LIVE]" if self.live else "[DRY_RUN]"
         arb = " [ARBITER]" if tripped or overridden else ""
@@ -243,7 +253,7 @@ class LiveController:
         print(f"{tag} a={['DEC','INC','HOLD'][action]:<4} target={self.current_core_mhz:6.0f}MHz "
               f"observed={raw['core_mhz']:6.0f}MHz {raw['power_w']:5.1f}W {raw['temp_c']:4.1f}C "
               f"util={raw['gpu_util']:3.0f}% ms/iter={fresh['ms_per_iter']:6.2f} "
-              f"resp=({resp[0]:.2f},{resp[1]:.2f}){arb}{deb}")
+              f"resp=({resp[0]:.2f},{resp[1]:.2f}) tick_ms={tick_ms:5.1f}{arb}{deb}")
 
 
 def main():
