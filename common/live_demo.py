@@ -114,22 +114,28 @@ class BrailleCanvas:
         if color:
             self.cell_color[cy][cx] = color
 
-    def draw_series(self, values, lo, hi, color, fill=True, baseline_px=None):
+    def draw_series(self, values, lo, hi, color):
         """values: one y-value per pixel-column (already resampled to
-        self.px_w length). Draws a line and, with fill=True, a SOLID area
-        from the line down to `baseline_px` (defaults to the chart bottom)
-        -- every pixel row filled, not a sparse/dotted fill, for a solid
-        area-chart look instead of a thin scattered line."""
+        self.px_w length). Draws a CONTINUOUS solid line: consecutive
+        columns are connected with a vertical segment spanning both their
+        y-positions, not just one pixel per column -- a single pixel per
+        column looks like scattered dots whenever the value jumps between
+        adjacent columns (which it does constantly with noisy power
+        samples); connecting them is what makes it read as one solid line."""
         span = max(hi - lo, 1e-6)
-        bottom = self.px_h if baseline_px is None else baseline_px
-        for x, v in enumerate(values):
-            if v is None:
+        y_vals = [int((1.0 - (v - lo) / span) * (self.px_h - 1)) if v is not None else None
+                  for v in values]
+        prev_y = None
+        for x, y in enumerate(y_vals):
+            if y is None:
+                prev_y = None
                 continue
-            y_line = int((1.0 - (v - lo) / span) * (self.px_h - 1))
-            self.set_pixel(x, y_line, color)
-            if fill:
-                for y in range(y_line + 1, bottom):
-                    self.set_pixel(x, y, color)
+            if prev_y is not None:
+                for yy in range(min(prev_y, y), max(prev_y, y) + 1):
+                    self.set_pixel(x, yy, color)
+            else:
+                self.set_pixel(x, y, color)
+            prev_y = y
 
     def render(self):
         lines = []
@@ -200,8 +206,8 @@ def build_frame(console, name, hw, live_flag, current_phase, phase_remaining,
                            for v, idx in zip(rs_power, rs_phase_idx)]
         with_series = [v if idx is not None and idx >= 0.5 else None
                         for v, idx in zip(rs_power, rs_phase_idx)]
-        canvas.draw_series(without_series, lo, hi, WITHOUT_COLOR, fill=True)
-        canvas.draw_series(with_series, lo, hi, WITH_COLOR, fill=True)
+        canvas.draw_series(without_series, lo, hi, WITHOUT_COLOR)
+        canvas.draw_series(with_series, lo, hi, WITH_COLOR)
         y_label_hi, y_label_lo = f"{hi:.0f}W", f"{lo:.0f}W"
     else:
         y_label_hi, y_label_lo = "", ""
