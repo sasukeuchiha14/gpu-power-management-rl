@@ -190,7 +190,7 @@ LABEL_W = 7  # width of the fixed y-axis label gutter, e.g. "  354 ┤"
 
 
 def build_frame(console, name, hw, live_flag, current_phase, phase_remaining,
-                 times, powers, phases, stats, current_power):
+                 times, powers, phases, stats, current_power, joules_saved=0.0):
     # panel chrome eats: 1 border + 1 padding char on each side = 4; leave a
     # little extra margin so nothing ever wraps mid-row
     graph_cols = max(20, console.width - LABEL_W - 8)
@@ -283,8 +283,15 @@ def build_frame(console, name, hw, live_flag, current_phase, phase_remaining,
         label_line = Text("  collecting baseline...", style=DIM)
         bar_line = Text("")
 
+    total_color = WITH_COLOR if joules_saved >= 0 else WITHOUT_COLOR
+    wh_saved = joules_saved / 3600.0
+    total_line = Text(
+        f"  TOTAL ENERGY SAVED THIS SESSION: {joules_saved:+,.0f} J  ({wh_saved:+.2f} Wh)",
+        style=f"bold {total_color}",
+    )
+
     stats_panel = Panel(
-        Group(stats_table, Text(""), label_line, bar_line),
+        Group(stats_table, Text(""), label_line, bar_line, Text(""), total_line),
         title="[bold]live stats[/bold]",
         border_style=ACCENT,
         padding=(0, 1),
@@ -303,7 +310,7 @@ def build_frame(console, name, hw, live_flag, current_phase, phase_remaining,
     layout.split_column(
         Layout(Panel(header, border_style=DIM), size=4),
         Layout(graph_panel, size=graph_rows + 11),
-        Layout(stats_panel, size=9),
+        Layout(stats_panel, size=11),
         Layout(footer, size=1),
     )
     return layout
@@ -332,6 +339,9 @@ def main():
     current_phase = None
     phase_deadline = 0.0
     cleaned_up = False
+    joules_saved = 0.0  # cumulative, whole session, never reset by the
+                          # rolling HISTORY_SECONDS graph window
+    last_tick_t = None
 
     def cleanup(*_):
         nonlocal deploy_proc, cleaned_up
@@ -389,6 +399,19 @@ def main():
                         start_with()
 
                 power = float(pynvml.nvmlDeviceGetPowerUsage(handle) / 1000.0)
+                dt = (time.time() - last_tick_t) if last_tick_t is not None else 0.0
+                last_tick_t = time.time()
+                # Cumulative energy saved: for every WITH-phase tick, how
+                # much less energy was drawn than if the WITHOUT baseline
+                # (this session's own measured mean, not an assumption) had
+                # applied for that same instant. Never reset by the graph's
+                # rolling HISTORY_SECONDS window -- this is a whole-session
+                # total, and it CAN go down, not just up, if a WITH stretch
+                # genuinely draws more than the WITHOUT mean -- that's
+                # honest, not a bug to hide.
+                if current_phase == "WITH" and stats["WITHOUT"].n > 0 and dt > 0:
+                    joules_saved += (stats["WITHOUT"].mean - power) * dt
+
                 times.append(now)
                 powers.append(power)
                 phases.append(current_phase)
@@ -398,7 +421,8 @@ def main():
                     times.pop(0); powers.pop(0); phases.pop(0)
 
                 frame = build_frame(console, name, hw, a.live, current_phase,
-                                     phase_deadline - now, times, powers, phases, stats, power)
+                                     phase_deadline - now, times, powers, phases, stats, power,
+                                     joules_saved)
                 live.update(frame)
                 time.sleep(1.0 / SAMPLE_HZ)
     except Exception:
