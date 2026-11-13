@@ -5,6 +5,7 @@ Same status-file contract as live_resnet50_train.py.
 
   --mode matmul    large fp32 GEMM loop            -> compute-bound
   --mode membound  large elementwise / copy loop   -> memory-bandwidth-bound
+  --mode phased    alternates the two every PHASE_S s  -> tests re-adaptation after a phase change
 
     python3 common/benchmarks/live_synthetic.py --mode matmul --minutes 15
 """
@@ -12,6 +13,7 @@ import argparse, gc, json, os, signal, time
 import torch
 
 DEFAULT_STATUS_FILE = "/tmp/dvfs_workload_status.json"
+PHASE_S = 30.0
 
 
 def write_status(path, step, ms_per_iter, iters_per_sec):
@@ -38,6 +40,16 @@ def make_step(mode, device):
             torch.add(y, 0.5, out=x)
             return x
         return step, 160
+    if mode == "phased":
+        # alternates a compute-bound and a memory-bound phase every PHASE_S seconds
+        mm, mm_w = make_step("matmul", device)
+        mb, mb_w = make_step("membound", device)
+        t_start = time.time()
+        def step():
+            if int((time.time() - t_start) // PHASE_S) % 2 == 0:
+                return mm()
+            return mb()
+        return step, 40
     raise SystemExit(f"unknown mode {mode}")
 
 
@@ -65,7 +77,7 @@ def run(mode, minutes, status_file):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", required=True, choices=["matmul", "membound"])
+    ap.add_argument("--mode", required=True, choices=["matmul", "membound", "phased"])
     ap.add_argument("--minutes", type=float, default=15.0)
     ap.add_argument("--status-file", default=DEFAULT_STATUS_FILE)
     a = ap.parse_args()

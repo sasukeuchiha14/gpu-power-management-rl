@@ -101,6 +101,13 @@ DEBOUNCE_N = 1
 # here). Released if the parked level's live EDP degrades by more than LOCKIN_RELEASE_FRAC
 # against the value it had when chosen. 0 = off (default).
 LOCKIN_K = 0
+LOCKIN_MS_SHIFT = 0.25      # release if the settled mean ms/iter moves more than this fraction from the value
+                            # at parking IN EITHER DIRECTION (the workload changed phase; the parked level was
+                            # chosen for a different one). 0 = off.
+LOCKIN_PROBE = True          # after detecting a cycle, hold each visited level PROBE_SETTLE+PROBE_MEASURE ticks and
+LOCKIN_PROBE_SETTLE = 2      # measure it cleanly before choosing. Needed because power/ms telemetry lags a clock
+LOCKIN_PROBE_MEASURE = 2     # change: a level visited for one tick records the PREVIOUS level's power (found in
+                             # phased_hw_trials: lock-in re-parked at max clock on a memory-bound phase).
 LOCKIN_MAX_SLOWDOWN = None   # e.g. 0.08: only park at levels whose live ms/iter is within 8% of the
                              # fastest level seen so far (None = pick purely by lowest live EDP)
 LOCKIN_RELEASE_FRAC = 0.15
@@ -130,7 +137,7 @@ def _wait_for_fresh_status(status_file, last_step, timeout_s):
 
 class LiveController:
     def __init__(self, weights_path, status_file, gpu_index=0, live=False, debounce_n=DEBOUNCE_N,
-                 lockin_k=LOCKIN_K, lockin_max_slowdown=LOCKIN_MAX_SLOWDOWN):
+                 lockin_k=LOCKIN_K, lockin_max_slowdown=LOCKIN_MAX_SLOWDOWN, lockin_ms_shift=LOCKIN_MS_SHIFT, lockin_probe=LOCKIN_PROBE):
         self.live = live
         self.status_file = status_file
 
@@ -156,6 +163,15 @@ class LiveController:
         self.debounce_n = debounce_n
         self.lockin_k = lockin_k
         self.lockin_cap = lockin_max_slowdown
+        self.lockin_ms_shift = lockin_ms_shift
+        self.lockin_probe = lockin_probe
+        self.probe_lvls = None         # MHz levels being probed (None = not probing)
+        self.probe_i = 0
+        self.probe_n = 0
+        self.probe_buf = []
+        self.probe_stats = {}
+        self.parked_ms = None
+        self.parked_ms_recent = deque(maxlen=LOCKIN_RELEASE_WINDOW)
         self.level_ms = {}
         self.target_hist = deque(maxlen=max(lockin_k, 1))
         self.level_edp = {}            # level key -> latest live EDP (P * t^2)
@@ -230,6 +246,15 @@ class LiveController:
         best = min(cand, key=lambda l: self.level_edp[l])
         return float(best * 25.0)
 
+    def _visited_mhz(self):
+        return sorted({self._lvl(x) * 25.0 for x in self.target_hist}, reverse=True)
+
+    def _park(self, mhz, edp, ms):
+        self.parked_mhz, self.parked_edp, self.parked_ms = mhz, edp, ms
+        self.parked_ticks = 0
+        self.parked_recent.clear()
+        self.parked_ms_recent.clear()
+
     def reset_clocks(self):
         try:
             pynvml.nvmlDeviceResetGpuLockedClocks(self.handle)
@@ -281,11 +306,46 @@ class LiveController:
         self.level_edp[self._lvl(self.current_core_mhz)] = raw["power_w"] * fresh["ms_per_iter"] ** 2
         self.level_ms[self._lvl(self.current_core_mhz)] = fresh["ms_per_iter"]
 
+        if self.probe_lvls is not None:
+            self.probe_n += 1
+            if self.probe_n > LOCKIN_PROBE_SETTLE:
+                self.probe_buf.append((raw["power_w"] * fresh["ms_per_iter"] ** 2, fresh["ms_per_iter"]))
+            if self.probe_n >= LOCKIN_PROBE_SETTLE + LOCKIN_PROBE_MEASURE:
+                self.probe_stats[self.probe_lvls[self.probe_i]] = (
+                    float(np.mean([b[0] for b in self.probe_buf])), float(np.mean([b[1] for b in self.probe_buf])))
+                self.probe_i += 1; self.probe_n = 0; self.probe_buf = []
+                if self.probe_i >= len(self.probe_lvls):
+                    st = self.probe_stats
+                    ref = min(m for _, m in st.values())
+                    cand = list(st)
+                    if self.lockin_cap is not None:
+                        cand = [l for l in st if st[l][1] <= ref * (1.0 + self.lockin_cap)] or [min(st, key=lambda l: st[l][1])]
+                    best = min(cand, key=lambda l: st[l][0])
+                    self._park(best, st[best][0], st[best][1])
+                    self.probe_lvls = None
+                    self.set_clocks(best)
+                    print(f"[LOCKIN] probe done {{{', '.join(f'{int(l)}:{st[l][0]:.0f}' for l in st)}}} -> parking at {best:.0f} MHz")
+                    return
+            self.set_clocks(self.probe_lvls[self.probe_i])
+            print(f"[LIVE] a=PROBE target={self.current_core_mhz:6.0f}MHz observed={raw['core_mhz']:6.0f}MHz "
+                  f"{raw['power_w']:5.1f}W {raw['temp_c']:4.1f}C util={raw['gpu_util']:3.0f}% "
+                  f"ms/iter={fresh['ms_per_iter']:6.2f} [PROBING]")
+            return
+
         if self.parked_mhz is not None:
             cur = raw["power_w"] * fresh["ms_per_iter"] ** 2
             self.parked_ticks += 1
             if self.parked_ticks > LOCKIN_SETTLE_TICKS:
                 self.parked_recent.append(cur)
+                self.parked_ms_recent.append(fresh["ms_per_iter"])
+            if (self.lockin_ms_shift > 0 and len(self.parked_ms_recent) == LOCKIN_RELEASE_WINDOW
+                    and abs(float(np.mean(self.parked_ms_recent)) / self.parked_ms - 1.0) > self.lockin_ms_shift):
+                print(f"[LOCKIN] work shifted (ms/iter {np.mean(self.parked_ms_recent):.2f} vs {self.parked_ms:.2f} "
+                      f"at park) -- releasing")
+                self.parked_mhz = None
+                self.target_hist.clear(); self.level_edp.clear(); self.level_ms.clear()
+                self.parked_ms_recent.clear(); self.parked_recent.clear()
+                return
             mean_cur = float(np.mean(self.parked_recent)) if len(self.parked_recent) == LOCKIN_RELEASE_WINDOW else None
             if mean_cur is not None and mean_cur > self.parked_edp * (1.0 + LOCKIN_RELEASE_FRAC):
                 print(f"[LOCKIN] parked EDP degraded {mean_cur:.0f} vs {self.parked_edp:.0f} -- releasing")
@@ -317,12 +377,15 @@ class LiveController:
         self.target_hist.append(self.current_core_mhz)
         park = self._maybe_lock()
         if park is not None:
-            self.parked_mhz = park
-            self.parked_edp = self.level_edp[self._lvl(park)]
-            self.parked_ticks = 0
-            self.parked_recent.clear()
-            print(f"[LOCKIN] two-level cycle detected -> parking at {park:.0f} MHz "
-                  f"(live EDP {self.parked_edp:.0f})")
+            if self.lockin_probe:
+                self.probe_lvls = self._visited_mhz()
+                self.probe_i, self.probe_n, self.probe_buf, self.probe_stats = 0, 0, [], {}
+                self.set_clocks(self.probe_lvls[0])
+                print(f"[LOCKIN] cycle detected -> probing {[int(x) for x in self.probe_lvls]} MHz")
+            else:
+                self._park(park, self.level_edp[self._lvl(park)], self.level_ms[self._lvl(park)])
+                print(f"[LOCKIN] two-level cycle detected -> parking at {park:.0f} MHz "
+                      f"(live EDP {self.parked_edp:.0f})")
         tick_ms = (time.perf_counter() - _t0) * 1000.0
 
         tag = "[LIVE]" if self.live else "[DRY_RUN]"
@@ -350,11 +413,17 @@ def main():
     ap.add_argument("--lockin-max-slowdown", type=float, default=LOCKIN_MAX_SLOWDOWN,
                     help="with --lockin-k: only park at levels within this fraction of the fastest "
                          "live ms/iter seen (e.g. 0.08); default = pure lowest-EDP")
+    ap.add_argument("--lockin-ms-shift", type=float, default=LOCKIN_MS_SHIFT,
+                    help="release the lock when settled ms/iter moves by more than this fraction from "
+                         "its value at parking (phase change); 0 = off")
+    ap.add_argument("--no-lockin-probe", action="store_true",
+                    help="park directly on the (lag-contaminated) live EDP estimates instead of probing each level")
     a = ap.parse_args()
 
     controller = LiveController(a.weights, a.status_file, a.gpu_index, live=a.live,
                                  debounce_n=a.debounce_n, lockin_k=a.lockin_k,
-                                 lockin_max_slowdown=a.lockin_max_slowdown)
+                                 lockin_max_slowdown=a.lockin_max_slowdown,
+                                 lockin_ms_shift=a.lockin_ms_shift, lockin_probe=not a.no_lockin_probe)
 
     def handle_exit(signum, frame):
         print("\n[deploy_live] resetting clocks and exiting...")

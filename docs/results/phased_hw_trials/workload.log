@@ -1,0 +1,2 @@
+[live_synthetic] mode=phased running for 90.0 min, window=40 -> /tmp/dvfs_workload_status.json
+[live_synthetic] stopped at step 203000

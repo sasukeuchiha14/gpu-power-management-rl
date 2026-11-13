@@ -85,10 +85,36 @@ Same `old` checkpoint unless stated; vs default driver. `cap8` = `--lockin-max-s
 - Lock-in on `rc0.30` and on the dwell checkpoint also works on ResNet (they cycle under the
   arbiter too), so it is not specific to the old checkpoint.
 
+### Phase-changing workload: found a real bug, fixed it (4th host, Quebec 4090; `phased_hw_trials/`, `probe_hw_trials/`)
+`live_synthetic.py --mode phased` alternates GEMM (compute-bound) and elementwise (memory-bound) every 30 s.
+- Lock-in without the work-shift release stayed parked at the wrong clock after a phase change; with
+  it (`--lockin-ms-shift`, release if settled ms/iter moves >25% from its value at parking, either
+  direction) it released correctly but then RE-PARKED AT MAX CLOCK on the memory-bound phase and saved
+  nothing (1.4% vs 21.6% steady). Cause: NVML power/ms telemetry lags a clock change, so a level
+  visited for ONE tick records the previous level's power; the max clock (held longest by the
+  arbiter) looked falsely cheapest.
+- Fix: **probe-before-park** (default on; `--no-lockin-probe` restores the old direct park). After
+  a cycle is detected, hold each visited level 4 ticks (2 settle, 2 measure) and choose from those
+  clean readings (slowdown cap and work-shift release still apply). Verified on hardware (vs default
+  driver, 2 reps, cap 8%):
+
+| workload | policy | power saving | slowdown | EDP gain |
+|---|---|---|---|---|
+| phased, memory phase | lock-in, no probe | 1.4% | 0.1% | +1.3% |
+| | **lock-in + probe** | **20.2%** | 2.1% | **+16.9%** |
+| phased, compute phase | lock-in + probe | 0.7% | 0.9% | -1.1% (probe cost; parks at max, correct) |
+| memory-bound steady | no probe / probe | 23.6% / 22.4% | 2.4% / 2.2% | +19.9% / +19.0% |
+| resnet50 b=32 steady | no probe / probe | 9.9% / 18.5% | 2.3% / 4.4% | +6.1% / **+11.2%** |
+
+  Probe logs show clean per-level EDP (memory phase: 3100:5788 ... 1950:4888 -> parks 1950; compute
+  phase: ~38k at 3100-2325, 40.8k at 1950 -> parks 3100). Note the ResNet no-probe number (9.9%) was
+  much lower on this host than the 23-30% seen on the other two, i.e. the lag problem also made the
+  earlier steady results host-dependent; the probe makes them more consistent.
+
 ### Caveats / next steps
-- Three hosts total, three workloads, still short (90 s) runs with a static workload. Untested:
-  phase-changing workloads (the 15% degradation release is the only re-adaptation), longer runs,
-  other GPU models, a real multi-tenant/shared GPU.
+- Four hosts, four workload shapes (ResNet b=32, memory-bound, GEMM, phased), 90-150 s runs. Untested:
+  longer runs, other GPU models, a real multi-tenant/shared GPU, phase lengths shorter than ~20 s
+  (the probe costs ~16 ticks per detected cycle).
 - Batch=4 (launch-bound ResNet) remains unresolved: host-dependent for every policy.
 - Make `--lockin-max-slowdown 0.08` the recommended setting; consider defaulting lock-in on.
 - Rental notes: VM template `b7942f6bbc4374893ff66eb78145bbac` (docker.io/vastai/kvm) works via
