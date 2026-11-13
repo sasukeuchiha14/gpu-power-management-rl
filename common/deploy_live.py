@@ -105,8 +105,11 @@ LOCKIN_MS_SHIFT = 0.25      # release if the settled mean ms/iter moves more tha
                             # at parking IN EITHER DIRECTION (the workload changed phase; the parked level was
                             # chosen for a different one). 0 = off.
 LOCKIN_PROBE = True          # after detecting a cycle, hold each visited level PROBE_SETTLE+PROBE_MEASURE ticks and
+LOCKIN_PROBE_SETTLE_S = 1.5  # seconds to discard after a clock change before measuring a level
+LOCKIN_PROBE_MEASURE_S = 1.5 # seconds to measure each level; converted to ticks from the observed tick period,
+                             # so slow workloads (long report windows) don't spend 4 long ticks per level
 LOCKIN_PROBE_SETTLE = 2      # measure it cleanly before choosing. Needed because power/ms telemetry lags a clock
-LOCKIN_PROBE_MEASURE = 2     # change: a level visited for one tick records the PREVIOUS level's power (found in
+LOCKIN_PROBE_MEASURE = 2     # (tick-count defaults for the first probe, before a tick period is known) change: a level visited for one tick records the PREVIOUS level's power (found in
                              # phased_hw_trials: lock-in re-parked at max clock on a memory-bound phase).
 LOCKIN_MAX_SLOWDOWN = None   # e.g. 0.08: only park at levels whose live ms/iter is within 8% of the
                              # fastest level seen so far (None = pick purely by lowest live EDP)
@@ -170,6 +173,8 @@ class LiveController:
         self.probe_n = 0
         self.probe_buf = []
         self.probe_stats = {}
+        self._t_prev = None
+        self.dt_ema = None
         self.parked_ms = None
         self.parked_ms_recent = deque(maxlen=LOCKIN_RELEASE_WINDOW)
         self.level_ms = {}
@@ -268,6 +273,11 @@ class LiveController:
             self.set_clocks(self.hw["max_core_mhz"])
             return
         self.last_step = fresh["step"]
+        _now = time.time()
+        if self._t_prev is not None:
+            _dt = _now - self._t_prev
+            self.dt_ema = _dt if self.dt_ema is None else 0.8 * self.dt_ema + 0.2 * _dt
+        self._t_prev = _now
 
         # Decision-latency measurement (NORTHSTAR row 8): times only the
         # control work itself -- NVML telemetry read through the clock
@@ -308,9 +318,14 @@ class LiveController:
 
         if self.probe_lvls is not None:
             self.probe_n += 1
-            if self.probe_n > LOCKIN_PROBE_SETTLE:
+            if self.dt_ema:
+                n_settle = int(min(4, max(1, np.ceil(LOCKIN_PROBE_SETTLE_S / self.dt_ema))))
+                n_meas = int(min(4, max(1, np.ceil(LOCKIN_PROBE_MEASURE_S / self.dt_ema))))
+            else:
+                n_settle, n_meas = LOCKIN_PROBE_SETTLE, LOCKIN_PROBE_MEASURE
+            if self.probe_n > n_settle:
                 self.probe_buf.append((raw["power_w"] * fresh["ms_per_iter"] ** 2, fresh["ms_per_iter"]))
-            if self.probe_n >= LOCKIN_PROBE_SETTLE + LOCKIN_PROBE_MEASURE:
+            if self.probe_n >= n_settle + n_meas:
                 self.probe_stats[self.probe_lvls[self.probe_i]] = (
                     float(np.mean([b[0] for b in self.probe_buf])), float(np.mean([b[1] for b in self.probe_buf])))
                 self.probe_i += 1; self.probe_n = 0; self.probe_buf = []

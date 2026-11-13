@@ -132,6 +132,18 @@ hosts exist on vast.ai right now (rows 2/10 blocker unchanged). RTX 4060 Ti is a
 - Probe cost is counted in TICKS, and a tick is one workload report window. For slow workloads
   (4060 Ti ResNet: 2.8 s/tick) 16 probe ticks = 45 s, so short runs undersell the lock-in.
 
+### Time-aware probe (`probe_time_trials/`, RTX 4060 Ti, ResNet b=32, 100 s runs, 2 reps)
+`deploy_live.py` now converts the probe's settle/measure seconds (1.5 s each, `LOCKIN_PROBE_*_S`) to ticks from
+the observed tick period (EMA), clamped 1-4 ticks, instead of a fixed 2+2 ticks per level.
+
+| 4060 Ti ResNet 100 s | probing share | locked | power saving | slowdown | EDP gain |
+|---|---|---|---|---|---|
+| fixed 4-tick probe | 45.5% | 27% | 16.1% | 3.8% | +9.7% |
+| **time-aware probe** | **19.7%** | **55%** | **22.0%** | 4.7% | **+14.5%** |
+
+Fast-tick workloads (0.75 s windows) get the same 2+2 as before. Not re-run on the fast workloads after
+this change (unit of risk: low, the ceil(1.5/0.75)=2 path is identical).
+
 ### Caveats / next steps
 - Four hosts, four workload shapes (ResNet b=32, memory-bound, GEMM, phased), 90-150 s runs. Untested:
   longer runs, other GPU models, a real multi-tenant/shared GPU, phase lengths shorter than ~20 s

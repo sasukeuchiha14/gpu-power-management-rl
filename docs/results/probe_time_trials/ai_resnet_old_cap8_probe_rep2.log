@@ -1,0 +1,40 @@
+[deploy_live] NVIDIA GeForce RTX 4060 Ti | hw limits: {'max_core_mhz': 3105.0, 'max_mem_mhz': 9001.0, 'power_limit_w': 165.0, 'slowdown_temp_c': 97.0, 'total_vram_mb': 16380.0}
+[LIVE] a=DEC  target=  2717MHz observed=  2745MHz 124.9W 67.0C util=100% ms/iter=130.82 resp=(0.50,0.50) tick_ms= 15.6
+[LIVE] a=DEC  target=  2329MHz observed=  2730MHz 125.0W 70.0C util=100% ms/iter=130.82 resp=(0.50,0.48) tick_ms= 14.2
+[LIVE] a=DEC  target=  1941MHz observed=  2340MHz  92.4W 66.0C util=100% ms/iter=134.62 resp=(0.47,0.83) tick_ms= 13.5
+[LIVE] a=DEC  target=  3105MHz observed=  1950MHz  80.9W 64.0C util=100% ms/iter=140.02 resp=(0.46,0.62) tick_ms= 14.2 [ARBITER]
+[LIVE] a=DEC  target=  3105MHz observed=  2745MHz 125.7W 69.0C util=100% ms/iter=131.31 resp=(0.47,0.71) tick_ms= 14.8 [ARBITER]
+[LIVE] a=HOLD target=  3105MHz observed=  2745MHz 119.7W 69.0C util= 24% ms/iter=130.79 resp=(0.50,0.50) tick_ms= 11.9 [ARBITER]
+[LIVE] a=DEC  target=  3105MHz observed=  2745MHz 125.1W 72.0C util=100% ms/iter=130.80 resp=(0.50,0.50) tick_ms= 11.8 [ARBITER]
+[LIVE] a=DEC  target=  3105MHz observed=  2745MHz 125.7W 72.0C util=100% ms/iter=130.80 resp=(0.50,0.50) tick_ms= 11.3 [ARBITER]
+[LOCKIN] cycle detected -> probing [3100, 2725, 2325, 1950] MHz
+[LIVE] a=DEC  target=  3100MHz observed=  2745MHz 125.9W 72.0C util=100% ms/iter=130.80 resp=(0.50,0.50) tick_ms= 28.1
+[LIVE] a=PROBE target=  3100MHz observed=  2745MHz 126.8W 72.0C util=100% ms/iter=130.78 [PROBING]
+[LIVE] a=PROBE target=  2725MHz observed=  2745MHz 126.0W 73.0C util=100% ms/iter=130.81 [PROBING]
+[LIVE] a=PROBE target=  2725MHz observed=  2730MHz 126.2W 72.0C util=100% ms/iter=130.86 [PROBING]
+[LIVE] a=PROBE target=  2325MHz observed=  2730MHz 127.3W 70.0C util=100% ms/iter=130.83 [PROBING]
+[LIVE] a=PROBE target=  2325MHz observed=  2325MHz  92.3W 69.0C util=100% ms/iter=134.82 [PROBING]
+[LIVE] a=PROBE target=  1950MHz observed=  2325MHz  92.0W 69.0C util=100% ms/iter=135.17 [PROBING]
+[LIVE] a=PROBE target=  1950MHz observed=  1950MHz  81.7W 65.0C util=100% ms/iter=140.03 [PROBING]
+[LOCKIN] probe done {3100:2156631, 2725:2179661, 2325:1680277, 1950:1603459} -> parking at 1950 MHz
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  81.2W 66.0C util=100% ms/iter=140.30 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  81.2W 66.0C util=100% ms/iter=140.27 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  81.0W 65.0C util=100% ms/iter=140.29 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  81.1W 66.0C util=100% ms/iter=140.30 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  81.4W 64.0C util=100% ms/iter=140.32 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  81.2W 65.0C util=100% ms/iter=140.29 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  81.2W 64.0C util=100% ms/iter=140.31 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  81.1W 64.0C util=100% ms/iter=140.30 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  81.1W 65.0C util= 99% ms/iter=140.30 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  80.8W 64.0C util=100% ms/iter=140.27 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  80.5W 65.0C util=100% ms/iter=140.32 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  80.9W 64.0C util=100% ms/iter=140.33 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  80.7W 64.0C util=100% ms/iter=140.29 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  81.1W 64.0C util=100% ms/iter=140.31 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  80.6W 63.0C util=100% ms/iter=140.34 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  80.7W 64.0C util=100% ms/iter=140.33 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  80.6W 64.0C util=100% ms/iter=140.27 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  80.7W 64.0C util=100% ms/iter=140.29 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  80.9W 63.0C util=100% ms/iter=140.31 [LOCKED]
+
+[deploy_live] resetting clocks and exiting...
