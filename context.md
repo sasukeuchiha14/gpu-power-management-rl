@@ -13,7 +13,71 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 8 Oct 2026): full scorecard push -- 9 of 11 rows green, the remaining 2 share one external blocker
+## IMMEDIATE NEXT STEP (as of 13 Nov 2026): cycle lock-in resolves the compute-bound trade-off on one 4090 -- needs a second workload and host before the paper calls it solved
+
+The `reversal_cost` trade-off (below) was reopened. Reward shaping did NOT resolve it, but a
+deployment-side **cycle lock-in** did, with no retraining.
+
+### What failed (offline screen, then hardware)
+New trainer knobs in `train_unified_v2.Cfg` (all default OFF): `reversal_window` (penalise a
+reversal only within K steps of the last move), `hold_bonus`, `reversal_util_scale`.
+`common/analysis/dwell_screen.py` screened 11 variants. Best candidate `reversal_cost=0.30,
+reversal_window=2, hold_bonus=0.02` looked good offline (5 GPUs: compute-bound power saving
+12.4% -> 16.0%, EDP 0.020 -> 0.014, but cycling 1.3% -> 8.7%). On the real 4090
+(`docs/results/dwell_hw_trials/`, 3 seeds) it did NOT thread the needle: batch=32 kept the
+saving but still cycled (flip_rate 0.50-0.78); seed 0 pinned at max clock (-31% at batch=4).
+A 3-seed offline screen overstated the effect again (same lesson as `action_cost`).
+
+### Two findings that reframed the problem (`dwell_hw_trials` logs)
+1. The cycle's cost is modest: batch=32 cycling policies net ~5% energy/iter at 1-3% slowdown.
+2. **The Layer-2 do-no-harm arbiter drives much of the batch=32 "cycle"**: it was active on
+   ~61% of ticks (policy DECs, arbiter jumps back to max, repeat -- a 4+ level pattern, not a
+   2-level dither). Compute-bound work is always >85% util, so the arbiter fights every DEC.
+
+### What worked: deployment-side cycle lock-in (`deploy_live.py --lockin-k 8`)
+If the last K committed clock targets form a short cycle (2-4 distinct levels, >=2 direction
+reversals), stop consulting policy+arbiter and park at the visited level with the lowest LIVE
+EDP (`power_w * ms_per_iter**2`, both already measured). Release if the mean of 4 settled
+samples degrades >15% vs the value at parking; the first 4 ticks after parking are ignored
+(the measurement window still mixes the previous clock -- a first version without this released
+too eagerly and held only 7-76% of ticks, `lockin_hw_trials`). Off by default.
+Offline (`common/analysis/lockin_eval.py`, 5 GPUs x 3 seeds, 2-level rule on the table): old
+pure-log + lock-in gave compute-bound cycling 0.47 -> 0.11, power saving 24.5% -> 24.7%,
+best scaled EDP of everything tried (0.003 vs 0.018 for rc0.30).
+
+**Hardware, RTX 4090, batch=32, 3 interleaved reps, vs default driver**
+(`docs/results/lockin2_hw_trials/`, reps agree to within 0.2 pts):
+
+| policy | power saving | slowdown | EDP gain | energy/iter | clock changes/tick |
+|---|---|---|---|---|---|
+| rc0.30 (prior fix) | -0.7% | 1.1% | -3.0% | +1.8% | 0.04 |
+| old pure-log | 7.6% | 2.8% | +2.3% | -5.0% | 0.51 |
+| **old + lock-in** | **33.6%** | **14.4%** | **+13.1%** | **-24.1%** | **0.05** |
+
+Locked 91% of ticks, zero spurious releases. **The 14% slowdown is the cost** (it is the
+EDP-optimal level, but report it next to the saving).
+batch=4 (launch-bound) on this host: lock-in cut clock changes 0.81 -> 0.23/tick and energy
+-14% -> -1.4% vs old, but still did not beat the default driver. That host was bad for every
+policy at batch=4 (an earlier host gave the old policy a saving there) -- treat batch=4 as
+unresolved, not as a lock-in failure or success.
+
+### Caveats / next steps
+- ONE host, ONE workload (`resnet50_train`), ONE checkpoint. Test a second live workload
+  (`live_glmark2_render`, a memory-bound one), a second 4090, and lock-in on other checkpoints.
+- Add a slowdown cap to the park choice (e.g. never park >8% slower than max) for a
+  saving-vs-speed dial.
+- Rental notes: VM template `b7942f6bbc4374893ff66eb78145bbac` (docker.io/vastai/kvm) works via
+  `vastai create instance <offer> --template_hash ... --disk 64`; SSH goes to the mapped
+  22/tcp host port, not the ssh*.vast.ai proxy. The VM needs `nvidia-ml-py gymnasium pandas
+  matplotlib torch torchvision` plus `gpus/rtx3050ti_laptop/deployment/arbiter.py`
+  (deploy_live imports it). Never `pkill -f` a pattern that appears in your own ssh command line.
+  Spend this round: ~$1.20 of the $5.37 credit ($4.29 left); both instances destroyed.
+
+---
+
+## Prior next step (8 Oct 2026; the limit-cycle trade-off in it was reopened by the 13 Nov entry above):
+
+## (was IMMEDIATE NEXT STEP, 8 Oct 2026): full scorecard push -- 9 of 11 rows green, the remaining 2 share one external blocker
 
 After the limit-cycle investigation closed (below), went through every remaining open
 NORTHSTAR row rather than stopping. **Found that three rows (1, 4, 9) were stale

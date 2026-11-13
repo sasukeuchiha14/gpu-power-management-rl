@@ -95,6 +95,16 @@ ARB_UTIL_THRESHOLD = 85.0
 # (e.g. combined with a smaller action stride) -- not because it's expected
 # to work as-is.
 DEBOUNCE_N = 1
+# Cycle lock-in (see common/analysis/lockin_eval.py): if the last LOCKIN_K committed clock
+# targets alternate between exactly two levels, stop consulting the policy/arbiter and park at
+# whichever of the two has the lower LIVE EDP (power_w * ms_per_iter**2, both already measured
+# here). Released if the parked level's live EDP degrades by more than LOCKIN_RELEASE_FRAC
+# against the value it had when chosen. 0 = off (default).
+LOCKIN_K = 0
+LOCKIN_RELEASE_FRAC = 0.15
+LOCKIN_SETTLE_TICKS = 4      # ignore the first ticks after parking: the measurement window still
+                             # mixes the previous clock (observed clock lags the commanded one)
+LOCKIN_RELEASE_WINDOW = 4    # judge degradation on the mean of this many settled samples
 
 
 def _wait_for_fresh_status(status_file, last_step, timeout_s):
@@ -117,7 +127,8 @@ def _wait_for_fresh_status(status_file, last_step, timeout_s):
 
 
 class LiveController:
-    def __init__(self, weights_path, status_file, gpu_index=0, live=False, debounce_n=DEBOUNCE_N):
+    def __init__(self, weights_path, status_file, gpu_index=0, live=False, debounce_n=DEBOUNCE_N,
+                 lockin_k=LOCKIN_K):
         self.live = live
         self.status_file = status_file
 
@@ -141,6 +152,13 @@ class LiveController:
         self.core_stride_mhz = CORE_STRIDE_FRAC * self.hw["max_core_mhz"]
         self.current_core_mhz = self.hw["max_core_mhz"]  # start at max, like every offline episode start option
         self.debounce_n = debounce_n
+        self.lockin_k = lockin_k
+        self.target_hist = deque(maxlen=max(lockin_k, 1))
+        self.level_edp = {}            # level key -> latest live EDP (P * t^2)
+        self.parked_mhz = None
+        self.parked_edp = None
+        self.parked_ticks = 0
+        self.parked_recent = deque(maxlen=LOCKIN_RELEASE_WINDOW)
         self.pending_action = None
         self.pending_count = 0
         self.last_step = -1
@@ -182,6 +200,26 @@ class LiveController:
         if action == 2 or self.pending_count >= self.debounce_n:
             return action
         return 2  # HOLD -- streak not long enough yet to commit
+
+    @staticmethod
+    def _lvl(mhz):
+        return int(round(mhz / 25.0))
+
+    def _maybe_lock(self):
+        """Return the MHz to park at if the last lockin_k targets form a short limit cycle:
+        2-4 distinct levels with at least two direction reversals (covers the 2-level
+        INC/DEC dither AND the policy-steps-down / arbiter-jumps-to-max pattern seen on
+        compute-bound hardware runs). Parks at the visited level with the lowest live EDP."""
+        h = [self._lvl(x) for x in self.target_hist]
+        if self.lockin_k <= 0 or len(h) < self.lockin_k:
+            return None
+        lv = sorted(set(h))
+        deltas = [b - a for a, b in zip(h, h[1:]) if b != a]
+        reversals = sum((deltas[i] > 0) != (deltas[i + 1] > 0) for i in range(len(deltas) - 1))
+        if not (2 <= len(lv) <= 4) or reversals < 2 or any(l not in self.level_edp for l in lv):
+            return None
+        best = min(lv, key=lambda l: self.level_edp[l])
+        return float(best * 25.0)
 
     def reset_clocks(self):
         try:
@@ -230,6 +268,27 @@ class LiveController:
             self.set_clocks(self.hw["max_core_mhz"] * 0.3)
             return
 
+        # measured under the clock that was in force during this window
+        self.level_edp[self._lvl(self.current_core_mhz)] = raw["power_w"] * fresh["ms_per_iter"] ** 2
+
+        if self.parked_mhz is not None:
+            cur = raw["power_w"] * fresh["ms_per_iter"] ** 2
+            self.parked_ticks += 1
+            if self.parked_ticks > LOCKIN_SETTLE_TICKS:
+                self.parked_recent.append(cur)
+            mean_cur = float(np.mean(self.parked_recent)) if len(self.parked_recent) == LOCKIN_RELEASE_WINDOW else None
+            if mean_cur is not None and mean_cur > self.parked_edp * (1.0 + LOCKIN_RELEASE_FRAC):
+                print(f"[LOCKIN] parked EDP degraded {mean_cur:.0f} vs {self.parked_edp:.0f} -- releasing")
+                self.parked_mhz = None
+                self.target_hist.clear()
+                self.level_edp.clear()
+            else:
+                self.set_clocks(self.parked_mhz)
+                print(f"[LIVE] a=LOCK target={self.current_core_mhz:6.0f}MHz observed={raw['core_mhz']:6.0f}MHz "
+                      f"{raw['power_w']:5.1f}W {raw['temp_c']:4.1f}C util={raw['gpu_util']:3.0f}% "
+                      f"ms/iter={fresh['ms_per_iter']:6.2f} [LOCKED]")
+                return
+
         raw_action = self.agent.act(state)
         action = self.debounce(raw_action)
         if action == 0:
@@ -245,6 +304,15 @@ class LiveController:
             core_max_mhz=self.hw["max_core_mhz"], requested_core_mhz=requested,
         )
         self.set_clocks(target)
+        self.target_hist.append(self.current_core_mhz)
+        park = self._maybe_lock()
+        if park is not None:
+            self.parked_mhz = park
+            self.parked_edp = self.level_edp[self._lvl(park)]
+            self.parked_ticks = 0
+            self.parked_recent.clear()
+            print(f"[LOCKIN] two-level cycle detected -> parking at {park:.0f} MHz "
+                  f"(live EDP {self.parked_edp:.0f})")
         tick_ms = (time.perf_counter() - _t0) * 1000.0
 
         tag = "[LIVE]" if self.live else "[DRY_RUN]"
@@ -266,10 +334,13 @@ def main():
     ap.add_argument("--debounce-n", type=int, default=DEBOUNCE_N,
                     help="consecutive identical non-HOLD actions required before a clock "
                          "change commits (limit-cycle mitigation; 1 = no debounce)")
+    ap.add_argument("--lockin-k", type=int, default=LOCKIN_K,
+                    help="park at the lower-live-EDP level once the last K clock targets alternate "
+                         "between exactly two levels (0 = off)")
     a = ap.parse_args()
 
     controller = LiveController(a.weights, a.status_file, a.gpu_index, live=a.live,
-                                 debounce_n=a.debounce_n)
+                                 debounce_n=a.debounce_n, lockin_k=a.lockin_k)
 
     def handle_exit(signum, frame):
         print("\n[deploy_live] resetting clocks and exiting...")

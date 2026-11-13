@@ -54,6 +54,8 @@ from features import FEATURES, RESPONSE_FEATURES, STACK_SIZE  # noqa: E402
 from dataset_view import discover_core_only  # noqa: E402
 from eval_policies import prepare, augmented_obs  # noqa: E402
 
+UTIL_IDX = FEATURES.index("sm_util") if "sm_util" in FEATURES else 1
+
 
 class QNet(nn.Module):
     def __init__(self, in_dim, n_actions, hidden=128, dueling=False):
@@ -126,6 +128,15 @@ class Cfg:
                           # flat per-move cost doesn't discourage any more
                           # than it discourages genuine one-way corrections.
                           # See common/analysis/reversal_cost_sweep.py.
+    reversal_window=None # None = reversal_cost applies however long ago the last
+                          # non-HOLD move was (original behaviour). int K = only
+                          # penalise a reversal within K steps of that move, so a
+                          # genuine correction after a dwell is free.
+    hold_bonus=0.0       # Added to the reward on every HOLD, to make "stay put"
+                          # a stable attractor at a plateau.
+    reversal_util_scale=False  # True = scale reversal_cost by the landing row's
+                          # sm_util, so cycling is taxed more on busy
+                          # (compute-bound) rows than on idle ones.
 
     def __init__(self, **kw):
         for k, v in kw.items():
@@ -186,6 +197,7 @@ def train(holdout_gpu, cfg=None, seed=0, datasets=None, verbose=False):
         stack = np.repeat(obs0[None, :], STACK_SIZE, axis=0)
         total = 0.0
         last_dir = None  # last non-HOLD action direction this episode (0=dec, 1=inc)
+        since_move = 10**6
 
         for t in range(cfg.steps):
             if np.random.rand() <= eps:
@@ -202,10 +214,17 @@ def train(holdout_gpu, cfg=None, seed=0, datasets=None, verbose=False):
             nxt = np.concatenate([stack[1:], obs[None, :]], axis=0)
             moved = (a != 2) if not cfg.abs_actions else (abs(tracked - float(core[i])) > 1e-9)
             reversed_dir = (not cfg.abs_actions) and a in (0, 1) and last_dir is not None and a != last_dir
+            if reversed_dir and cfg.reversal_window is not None and since_move > cfg.reversal_window:
+                reversed_dir = False
+            since_move = 0 if a in (0, 1) else since_move + 1
             if a in (0, 1):
                 last_dir = a
+            rc = cfg.reversal_cost
+            if cfg.reversal_util_scale:
+                rc = rc * float(W["feats"][j][UTIL_IDX])
             r = (rew_arr[j] - (cfg.action_cost if moved else 0.0)
-                 - (cfg.reversal_cost if reversed_dir else 0.0)) * cfg.reward_scale
+                 - (rc if reversed_dir else 0.0)
+                 + (cfg.hold_bonus if a == 2 else 0.0)) * cfg.reward_scale
             # Fix (1): time-limit truncation is NOT termination. This env never
             # terminates, so the bootstrap is always kept alive.
             mem.append((stack, a, r, nxt, 0.0))

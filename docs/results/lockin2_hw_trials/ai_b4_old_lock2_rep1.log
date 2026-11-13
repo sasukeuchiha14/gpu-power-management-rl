@@ -1,0 +1,286 @@
+[deploy_live] NVIDIA GeForce RTX 4090 | hw limits: {'max_core_mhz': 3105.0, 'max_mem_mhz': 10501.0, 'power_limit_w': 450.0, 'slowdown_temp_c': 99.0, 'total_vram_mb': 24564.0}
+[LIVE] a=DEC  target=  2717MHz observed=  2730MHz 173.1W 45.0C util= 43% ms/iter= 14.41 resp=(0.50,0.50) tick_ms= 10.4
+[LIVE] a=DEC  target=  2329MHz observed=  2730MHz 173.1W 45.0C util= 43% ms/iter= 13.42 resp=(0.50,0.50) tick_ms=  7.4
+[LIVE] a=DEC  target=  1941MHz observed=  2730MHz 173.1W 45.0C util= 43% ms/iter= 12.63 resp=(0.50,0.50) tick_ms= 14.7
+[LIVE] a=INC  target=  2329MHz observed=  1950MHz 165.0W 43.0C util= 43% ms/iter= 12.63 resp=(0.50,0.52) tick_ms=  8.0
+[LIVE] a=INC  target=  2717MHz observed=  1950MHz 165.0W 43.0C util= 43% ms/iter= 12.60 resp=(0.50,0.50) tick_ms=  8.2
+[LIVE] a=DEC  target=  2329MHz observed=  2730MHz 148.9W 44.0C util= 53% ms/iter= 12.65 resp=(0.50,0.45) tick_ms=  7.7
+[LIVE] a=DEC  target=  1941MHz observed=  2730MHz 148.9W 44.0C util= 53% ms/iter= 12.64 resp=(0.50,0.50) tick_ms= 14.3
+[LOCKIN] two-level cycle detected -> parking at 1950 MHz (live EDP 23242)
+[LIVE] a=INC  target=  2329MHz observed=  1950MHz 146.1W 43.0C util= 53% ms/iter= 12.61 resp=(0.50,0.51) tick_ms=  7.9
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 146.1W 43.0C util= 53% ms/iter= 12.62 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 144.8W 43.0C util= 63% ms/iter= 12.61 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 144.8W 43.0C util= 63% ms/iter= 12.92 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 129.6W 43.0C util= 63% ms/iter= 12.65 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 129.6W 43.0C util= 63% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.0W 42.0C util= 62% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.0W 42.0C util= 62% ms/iter= 12.86 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.1W 42.0C util= 62% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.1W 42.0C util= 62% ms/iter= 12.62 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.0W 43.0C util= 62% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.0W 43.0C util= 62% ms/iter= 12.62 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.3W 43.0C util= 62% ms/iter= 12.61 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.3W 43.0C util= 62% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.2W 43.0C util= 61% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.2W 43.0C util= 61% ms/iter= 12.64 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.2W 42.0C util= 61% ms/iter= 12.61 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.2W 42.0C util= 61% ms/iter= 12.64 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.1W 43.0C util= 62% ms/iter= 12.62 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.1W 43.0C util= 62% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.1W 42.0C util= 62% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.1W 42.0C util= 62% ms/iter= 12.61 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.5W 42.0C util= 62% ms/iter= 12.62 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.5W 42.0C util= 62% ms/iter= 12.62 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1302MHz 127.7W 42.0C util= 62% ms/iter= 12.64 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1302MHz 127.7W 42.0C util= 62% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.6W 42.0C util= 62% ms/iter= 14.97 [LOCKED]
+[LOCKIN] parked EDP degraded 36491 vs 23242 -- releasing
+[LIVE] a=INC  target=  2338MHz observed=  1950MHz 111.4W 41.0C util= 62% ms/iter= 26.22 resp=(0.50,0.50) tick_ms=  7.5
+[LIVE] a=DEC  target=  1950MHz observed=  2340MHz  85.8W 41.0C util= 15% ms/iter= 39.21 resp=(0.87,0.26) tick_ms= 12.7
+[LIVE] a=DEC  target=  1562MHz observed=  1950MHz  88.7W 41.0C util= 35% ms/iter= 24.14 resp=(0.94,0.47) tick_ms=  8.1
+[LIVE] a=DEC  target=  1174MHz observed=  1575MHz  95.0W 41.0C util= 35% ms/iter= 22.62 resp=(0.55,0.45) tick_ms=  8.2
+[LIVE] a=HOLD target=  1174MHz observed=  1575MHz  95.0W 41.0C util= 35% ms/iter= 22.84 resp=(0.50,0.50) tick_ms=  6.1
+[LIVE] a=INC  target=  1562MHz observed=  1185MHz  93.9W 41.0C util= 51% ms/iter= 22.52 resp=(0.51,0.51) tick_ms= 14.6
+[LIVE] a=INC  target=  1950MHz observed=  1575MHz  92.8W 41.0C util= 51% ms/iter= 22.71 resp=(0.50,0.49) tick_ms= 12.7
+[LIVE] a=INC  target=  2338MHz observed=  1950MHz  93.9W 41.0C util= 35% ms/iter= 22.88 resp=(0.51,0.51) tick_ms=  7.9
+[LOCKIN] two-level cycle detected -> parking at 1175 MHz (live EDP 47619)
+[LIVE] a=DEC  target=  1950MHz observed=  2340MHz  94.8W 41.0C util= 35% ms/iter= 25.57 resp=(0.60,0.51) tick_ms= 14.7
+[LIVE] a=LOCK target=  1175MHz observed=  1950MHz  85.1W 40.0C util= 17% ms/iter= 39.67 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz  84.2W 41.0C util= 50% ms/iter= 22.86 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz  90.8W 41.0C util= 50% ms/iter= 22.92 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz  90.8W 41.0C util= 50% ms/iter= 18.02 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 100.1W 42.0C util= 91% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 100.1W 42.0C util= 91% ms/iter= 12.65 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 114.9W 42.0C util= 91% ms/iter= 12.68 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 114.9W 42.0C util= 91% ms/iter= 12.67 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.3W 42.0C util= 91% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.3W 42.0C util= 91% ms/iter= 12.64 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.6W 42.0C util= 91% ms/iter= 12.69 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.6W 42.0C util= 91% ms/iter= 12.67 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.7W 42.0C util= 90% ms/iter= 12.68 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.6W 42.0C util= 90% ms/iter= 12.64 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.6W 42.0C util= 90% ms/iter= 12.68 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.6W 42.0C util= 90% ms/iter= 12.70 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.6W 42.0C util= 91% ms/iter= 12.67 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.3W 42.0C util= 91% ms/iter= 12.89 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.3W 42.0C util= 91% ms/iter= 12.71 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.3W 42.0C util= 91% ms/iter= 12.67 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.2W 42.0C util= 87% ms/iter= 12.74 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.1W 42.0C util= 87% ms/iter= 12.92 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.1W 42.0C util= 87% ms/iter= 12.71 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.1W 42.0C util= 87% ms/iter= 12.67 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 123.8W 42.0C util= 84% ms/iter= 12.92 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 123.8W 42.0C util= 84% ms/iter= 12.68 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 124.4W 42.0C util= 84% ms/iter= 12.79 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 123.1W 42.0C util= 78% ms/iter= 13.24 [LOCKED]
+[LIVE] a=LOCK target=  1175MHz observed=  1185MHz 123.1W 42.0C util= 78% ms/iter= 16.73 [LOCKED]
+[LOCKIN] parked EDP degraded 56039 vs 47619 -- releasing
+[LIVE] a=INC  target=  1563MHz observed=  1185MHz  86.2W 40.0C util= 27% ms/iter= 41.41 resp=(0.50,0.50) tick_ms=  9.3
+[LIVE] a=INC  target=  1951MHz observed=  1052MHz  73.7W 40.0C util= 27% ms/iter= 31.93 resp=(0.86,0.72) tick_ms= 15.1
+[LIVE] a=DEC  target=  1563MHz observed=  1965MHz  82.1W 40.0C util= 18% ms/iter= 34.07 resp=(0.52,0.53) tick_ms= 14.5
+[LIVE] a=HOLD target=  1563MHz observed=  1052MHz  84.4W 40.0C util= 42% ms/iter= 25.55 resp=(0.58,0.49) tick_ms=  6.5
+[LIVE] a=INC  target=  1951MHz observed=  1575MHz  86.2W 40.0C util= 42% ms/iter= 31.89 resp=(0.59,0.51) tick_ms=  9.4
+[LIVE] a=INC  target=  2339MHz observed=  1965MHz  88.3W 40.0C util= 35% ms/iter= 22.86 resp=(0.25,0.52) tick_ms=  7.7
+[LIVE] a=HOLD target=  2339MHz observed=  2340MHz  98.7W 41.0C util= 35% ms/iter= 20.58 resp=(0.40,0.61) tick_ms=  8.9
+[LIVE] a=INC  target=  2728MHz observed=  2340MHz  98.7W 41.0C util= 35% ms/iter= 16.36 resp=(0.50,0.50) tick_ms=  7.3
+[LOCKIN] two-level cycle detected -> parking at 2350 MHz (live EDP 26419)
+[LIVE] a=DEC  target=  2339MHz observed=  2730MHz 114.6W 42.0C util= 40% ms/iter= 16.36 resp=(0.50,0.66) tick_ms= 13.1
+[LIVE] a=LOCK target=  2350MHz observed=  2340MHz 130.4W 42.0C util= 40% ms/iter= 16.15 [LOCKED]
+[LIVE] a=LOCK target=  2350MHz observed=  2340MHz 130.4W 42.0C util= 40% ms/iter= 16.16 [LOCKED]
+[LIVE] a=LOCK target=  2350MHz observed=  2355MHz 131.5W 42.0C util= 42% ms/iter= 16.24 [LOCKED]
+[LIVE] a=LOCK target=  2350MHz observed=  2355MHz 116.8W 40.0C util= 42% ms/iter= 25.26 [LOCKED]
+[LIVE] a=LOCK target=  2350MHz observed=  2355MHz  85.6W 40.0C util= 16% ms/iter= 42.00 [LOCKED]
+[LIVE] a=LOCK target=  2350MHz observed=  2355MHz  85.6W 40.0C util= 16% ms/iter= 25.70 [LOCKED]
+[LIVE] a=LOCK target=  2350MHz observed=  2355MHz  93.9W 40.0C util= 30% ms/iter= 35.41 [LOCKED]
+[LOCKIN] parked EDP degraded 93862 vs 26419 -- releasing
+[LIVE] a=INC  target=  2738MHz observed=  2355MHz  95.9W 41.0C util= 30% ms/iter= 22.87 resp=(0.50,0.50) tick_ms=  9.4
+[LIVE] a=DEC  target=  2350MHz observed=  2745MHz 110.6W 41.0C util= 30% ms/iter= 25.26 resp=(0.61,0.66) tick_ms=  7.4
+[LIVE] a=INC  target=  2738MHz observed=  2355MHz 110.6W 40.0C util= 17% ms/iter= 39.99 resp=(0.00,0.50) tick_ms=  9.0
+[LIVE] a=HOLD target=  2738MHz observed=  2745MHz 101.9W 41.0C util= 13% ms/iter= 36.35 resp=(0.40,0.41) tick_ms=  5.5
+[LIVE] a=DEC  target=  2350MHz observed=  2745MHz 114.7W 41.0C util= 13% ms/iter= 35.28 resp=(0.50,0.50) tick_ms= 12.0
+[LIVE] a=INC  target=  2738MHz observed=  2355MHz 101.7W 40.0C util= 15% ms/iter= 39.20 resp=(0.39,0.63) tick_ms= 13.0
+[LIVE] a=INC  target=  3105MHz observed=  2745MHz  96.7W 41.0C util= 14% ms/iter= 27.30 resp=(0.11,0.45) tick_ms=  7.3
+[LIVE] a=DEC  target=  2717MHz observed=  2745MHz  96.7W 41.0C util= 14% ms/iter= 12.59 resp=(0.50,0.50) tick_ms= 12.6
+[LOCKIN] two-level cycle detected -> parking at 3100 MHz (live EDP 15330)
+[LIVE] a=INC  target=  3105MHz observed=  2730MHz 136.6W 44.0C util= 14% ms/iter= 12.64 resp=(0.39,0.00) tick_ms=  7.4
+[LIVE] a=LOCK target=  3100MHz observed=  2745MHz 173.9W 44.0C util= 48% ms/iter= 12.64 [LOCKED]
+[LIVE] a=LOCK target=  3100MHz observed=  2745MHz 173.9W 44.0C util= 48% ms/iter= 12.85 [LOCKED]
+[LIVE] a=LOCK target=  3100MHz observed=  2745MHz 173.9W 44.0C util= 48% ms/iter= 12.61 [LOCKED]
+[LIVE] a=LOCK target=  3100MHz observed=  2745MHz 187.1W 44.0C util= 48% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  3100MHz observed=  2745MHz 187.0W 44.0C util= 46% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  3100MHz observed=  2745MHz 187.0W 44.0C util= 46% ms/iter= 12.65 [LOCKED]
+[LIVE] a=LOCK target=  3100MHz observed=  2745MHz 187.5W 44.0C util= 46% ms/iter= 12.63 [LOCKED]
+[LOCKIN] parked EDP degraded 29937 vs 15330 -- releasing
+[LIVE] a=DEC  target=  2712MHz observed=  2745MHz 187.5W 44.0C util= 46% ms/iter= 12.66 resp=(0.50,0.50) tick_ms=  7.2
+[LIVE] a=DEC  target=  2324MHz observed=  2715MHz 186.1W 44.0C util= 47% ms/iter= 12.65 resp=(0.51,0.62) tick_ms= 13.3
+[LIVE] a=DEC  target=  1936MHz observed=  2715MHz 186.1W 44.0C util= 47% ms/iter= 12.63 resp=(0.50,0.50) tick_ms=  8.1
+[LIVE] a=INC  target=  2324MHz observed=  1935MHz 170.6W 42.0C util= 47% ms/iter= 12.63 resp=(0.50,0.54) tick_ms= 11.4
+[LIVE] a=INC  target=  2712MHz observed=  1935MHz 170.6W 42.0C util= 47% ms/iter= 12.64 resp=(0.50,0.50) tick_ms=  7.6
+[LIVE] a=INC  target=  3100MHz observed=  1935MHz 170.6W 42.0C util= 47% ms/iter= 12.64 resp=(0.50,0.50) tick_ms= 10.8
+[LIVE] a=DEC  target=  2712MHz observed=  2745MHz 155.8W 44.0C util= 47% ms/iter= 12.66 resp=(0.50,0.46) tick_ms=  7.4
+[LOCKIN] two-level cycle detected -> parking at 3100 MHz (live EDP 24968)
+[LIVE] a=DEC  target=  2324MHz observed=  2715MHz 166.1W 44.0C util= 47% ms/iter= 12.63 resp=(0.54,0.00) tick_ms= 12.2
+[LIVE] a=LOCK target=  3100MHz observed=  2715MHz 166.1W 44.0C util= 47% ms/iter= 12.65 [LOCKED]
+[LIVE] a=LOCK target=  3100MHz observed=  2745MHz 176.9W 44.0C util= 47% ms/iter= 12.62 [LOCKED]
+[LIVE] a=LOCK target=  3100MHz observed=  2745MHz 176.9W 44.0C util= 47% ms/iter= 12.74 [LOCKED]
+[LIVE] a=LOCK target=  3100MHz observed=  2745MHz 177.6W 44.0C util= 47% ms/iter= 12.64 [LOCKED]
+[LIVE] a=LOCK target=  3100MHz observed=  2745MHz 177.6W 44.0C util= 47% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  3100MHz observed=  2745MHz 187.4W 44.0C util= 47% ms/iter= 12.64 [LOCKED]
+[LIVE] a=LOCK target=  3100MHz observed=  2745MHz 187.4W 44.0C util= 47% ms/iter= 12.62 [LOCKED]
+[LOCKIN] parked EDP degraded 29548 vs 24968 -- releasing
+[LIVE] a=DEC  target=  2712MHz observed=  2745MHz 187.8W 44.0C util= 47% ms/iter= 12.64 resp=(0.50,0.50) tick_ms=  7.7
+[LIVE] a=DEC  target=  2324MHz observed=  2745MHz 187.8W 44.0C util= 47% ms/iter= 12.67 resp=(0.50,0.50) tick_ms=  7.4
+[LIVE] a=INC  target=  2712MHz observed=  2325MHz 182.0W 43.0C util= 54% ms/iter= 12.63 resp=(0.50,0.53) tick_ms= 15.4
+[LIVE] a=INC  target=  3100MHz observed=  2325MHz 182.0W 43.0C util= 54% ms/iter= 12.64 resp=(0.50,0.50) tick_ms=  7.2
+[LIVE] a=DEC  target=  2712MHz observed=  2745MHz 176.3W 44.0C util= 54% ms/iter= 12.63 resp=(0.50,0.47) tick_ms=  8.2
+[LIVE] a=DEC  target=  2324MHz observed=  2745MHz 176.3W 44.0C util= 54% ms/iter= 12.65 resp=(0.50,0.50) tick_ms=  8.1
+[LIVE] a=INC  target=  2712MHz observed=  2325MHz 173.5W 43.0C util= 52% ms/iter= 12.67 resp=(0.50,0.52) tick_ms= 11.8
+[LOCKIN] two-level cycle detected -> parking at 2325 MHz (live EDP 27843)
+[LIVE] a=INC  target=  3100MHz observed=  2325MHz 173.5W 43.0C util= 52% ms/iter= 16.34 resp=(0.50,0.50) tick_ms=  7.4
+[LIVE] a=LOCK target=  2325MHz observed=  2715MHz 166.5W 43.0C util= 52% ms/iter= 16.39 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz 147.6W 42.0C util= 42% ms/iter= 16.36 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz 147.6W 42.0C util= 42% ms/iter= 16.33 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz 135.3W 42.0C util= 42% ms/iter= 16.35 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz 121.5W 42.0C util= 42% ms/iter= 16.41 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz 121.5W 42.0C util= 42% ms/iter= 16.36 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz 121.4W 42.0C util= 42% ms/iter= 16.39 [LOCKED]
+[LOCKIN] parked EDP degraded 32338 vs 27843 -- releasing
+[LIVE] a=INC  target=  2713MHz observed=  2325MHz 121.4W 42.0C util= 42% ms/iter= 16.10 resp=(0.50,0.50) tick_ms=  7.7
+[LIVE] a=INC  target=  3101MHz observed=  2715MHz 121.9W 42.0C util= 45% ms/iter= 12.71 resp=(0.25,0.50) tick_ms=  8.6
+[LIVE] a=DEC  target=  2713MHz observed=  2745MHz 148.5W 44.0C util= 45% ms/iter= 12.87 resp=(0.69,1.00) tick_ms=  7.2
+[LIVE] a=DEC  target=  2325MHz observed=  2745MHz 148.5W 44.0C util= 45% ms/iter= 12.66 resp=(0.50,0.50) tick_ms= 13.4
+[LIVE] a=DEC  target=  1937MHz observed=  2745MHz 148.5W 44.0C util= 45% ms/iter= 12.63 resp=(0.50,0.50) tick_ms=  7.6
+[LIVE] a=INC  target=  2325MHz observed=  2325MHz 170.8W 43.0C util= 54% ms/iter= 12.64 resp=(0.50,0.36) tick_ms=  9.9
+[LIVE] a=INC  target=  2713MHz observed=  2325MHz 154.0W 42.0C util= 54% ms/iter= 12.65 resp=(0.50,0.50) tick_ms=  7.6
+[LOCKIN] two-level cycle detected -> parking at 2725 MHz (live EDP 24550)
+[LIVE] a=INC  target=  3101MHz observed=  2325MHz 154.0W 42.0C util= 54% ms/iter= 12.63 resp=(0.50,0.50) tick_ms= 13.1
+[LIVE] a=LOCK target=  2725MHz observed=  2745MHz 149.1W 44.0C util= 47% ms/iter= 12.68 [LOCKED]
+[LIVE] a=LOCK target=  2725MHz observed=  2745MHz 149.1W 44.0C util= 47% ms/iter= 12.65 [LOCKED]
+[LIVE] a=LOCK target=  2725MHz observed=  2730MHz 174.0W 44.0C util= 47% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  2725MHz observed=  2730MHz 174.0W 44.0C util= 47% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  2725MHz observed=  2730MHz 187.4W 44.0C util= 47% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  2725MHz observed=  2730MHz 187.4W 44.0C util= 47% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  2725MHz observed=  2730MHz 187.7W 44.0C util= 47% ms/iter= 12.62 [LOCKED]
+[LOCKIN] parked EDP degraded 29916 vs 24550 -- releasing
+[LIVE] a=DEC  target=  2337MHz observed=  2730MHz 187.7W 44.0C util= 47% ms/iter= 12.65 resp=(0.50,0.50) tick_ms=  7.3
+[LIVE] a=INC  target=  2725MHz observed=  2340MHz 183.0W 43.0C util= 42% ms/iter= 14.92 resp=(0.32,0.53) tick_ms=  7.4
+[LIVE] a=INC  target=  3105MHz observed=  2340MHz 183.0W 43.0C util= 42% ms/iter= 17.67 resp=(0.50,0.50) tick_ms= 12.1
+[LIVE] a=DEC  target=  2717MHz observed=  2745MHz 134.9W 42.0C util= 13% ms/iter= 31.57 resp=(1.00,0.18) tick_ms=  7.6
+[LIVE] a=DEC  target=  2329MHz observed=  2730MHz 121.1W 42.0C util= 13% ms/iter= 38.16 resp=(0.00,1.00) tick_ms=  8.4
+[LIVE] a=HOLD target=  2329MHz observed=  2340MHz 101.0W 40.0C util= 15% ms/iter= 39.94 resp=(0.45,0.70) tick_ms=  5.8
+[LIVE] a=HOLD target=  2329MHz observed=  2340MHz  85.5W 40.0C util= 15% ms/iter= 40.31 resp=(0.50,0.50) tick_ms=  5.6
+[LIVE] a=DEC  target=  1941MHz observed=  2340MHz  85.4W 40.0C util= 16% ms/iter= 37.16 resp=(0.50,0.50) tick_ms=  8.4
+[LIVE] a=DEC  target=  1552MHz observed=  1950MHz  84.6W 40.0C util= 16% ms/iter= 34.01 resp=(0.58,0.51) tick_ms=  9.0
+[LIVE] a=INC  target=  1941MHz observed=  1560MHz  78.3W 40.0C util= 18% ms/iter= 42.50 resp=(0.33,0.56) tick_ms= 13.2
+[LIVE] a=HOLD target=  1941MHz observed=  1950MHz  76.1W 40.0C util= 17% ms/iter= 42.34 resp=(0.50,0.48) tick_ms=  6.4
+[LIVE] a=INC  target=  2329MHz observed=  1950MHz  82.0W 40.0C util= 19% ms/iter= 29.84 resp=(0.50,0.50) tick_ms= 14.6
+[LOCKIN] two-level cycle detected -> parking at 1950 MHz (live EDP 73035)
+[LIVE] a=DEC  target=  1941MHz observed=  2340MHz  83.3W 40.0C util= 19% ms/iter= 37.27 resp=(0.70,0.51) tick_ms=  7.8
+[LIVE] a=LOCK target=  1950MHz observed=  2340MHz  88.2W 41.0C util= 54% ms/iter= 12.58 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  2340MHz  88.2W 41.0C util= 54% ms/iter= 12.69 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 111.3W 41.0C util= 54% ms/iter= 12.51 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1302MHz 130.3W 42.0C util= 62% ms/iter= 12.51 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1302MHz 130.3W 42.0C util= 62% ms/iter= 12.62 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1302MHz 130.3W 42.0C util= 62% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.9W 42.0C util= 62% ms/iter= 12.97 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.4W 41.0C util= 62% ms/iter= 12.58 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.4W 41.0C util= 62% ms/iter= 12.65 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.4W 41.0C util= 62% ms/iter= 12.60 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.0W 42.0C util= 62% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.60 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.62 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.5W 42.0C util= 62% ms/iter= 12.61 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.8W 42.0C util= 62% ms/iter= 12.52 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.8W 42.0C util= 62% ms/iter= 12.55 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.8W 42.0C util= 62% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 129.1W 41.0C util= 62% ms/iter= 12.57 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 129.0W 41.0C util= 61% ms/iter= 12.57 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 129.0W 41.0C util= 61% ms/iter= 12.55 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.9W 42.0C util= 61% ms/iter= 12.54 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.9W 42.0C util= 61% ms/iter= 12.61 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.9W 42.0C util= 61% ms/iter= 12.50 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.9W 42.0C util= 63% ms/iter= 12.50 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 129.0W 41.0C util= 63% ms/iter= 12.64 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 129.0W 41.0C util= 63% ms/iter= 12.59 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 129.0W 41.0C util= 63% ms/iter= 12.86 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.3W 41.0C util= 56% ms/iter= 13.11 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.3W 41.0C util= 56% ms/iter= 12.69 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.3W 41.0C util= 56% ms/iter= 12.53 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.3W 41.0C util= 56% ms/iter= 12.61 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.7W 41.0C util= 62% ms/iter= 12.59 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.9W 42.0C util= 62% ms/iter= 12.58 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.9W 42.0C util= 62% ms/iter= 12.57 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.9W 42.0C util= 62% ms/iter= 12.86 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.8W 41.0C util= 59% ms/iter= 13.93 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 121.8W 40.0C util= 59% ms/iter= 22.12 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 103.5W 40.0C util= 19% ms/iter= 24.21 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  99.2W 41.0C util= 19% ms/iter= 16.19 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 108.2W 41.0C util= 49% ms/iter= 16.27 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 108.2W 41.0C util= 49% ms/iter= 16.34 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 109.2W 40.0C util= 49% ms/iter= 21.08 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 101.6W 40.0C util= 33% ms/iter= 23.02 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  89.2W 39.0C util= 33% ms/iter= 35.60 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  82.5W 39.0C util= 19% ms/iter= 21.60 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  82.5W 39.0C util= 19% ms/iter= 12.62 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  99.9W 41.0C util= 19% ms/iter= 12.53 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 121.8W 41.0C util= 61% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 121.8W 41.0C util= 61% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 121.8W 41.0C util= 61% ms/iter= 12.61 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.8W 41.0C util= 61% ms/iter= 12.58 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.59 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.65 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.9W 41.0C util= 62% ms/iter= 12.61 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 61% ms/iter= 12.70 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 61% ms/iter= 12.60 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 61% ms/iter= 12.58 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.8W 41.0C util= 61% ms/iter= 12.53 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.8W 41.0C util= 62% ms/iter= 12.73 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.8W 41.0C util= 62% ms/iter= 12.64 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.7W 41.0C util= 62% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.7W 41.0C util= 62% ms/iter= 12.57 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.62 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.61 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.59 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.8W 41.0C util= 62% ms/iter= 12.60 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.8W 41.0C util= 62% ms/iter= 12.65 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.7W 41.0C util= 62% ms/iter= 12.59 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.7W 41.0C util= 62% ms/iter= 12.57 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.8W 41.0C util= 62% ms/iter= 12.60 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.8W 41.0C util= 62% ms/iter= 12.61 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 129.0W 41.0C util= 62% ms/iter= 12.58 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 129.0W 41.0C util= 62% ms/iter= 12.75 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.56 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.58 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.3W 41.0C util= 62% ms/iter= 14.84 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.3W 41.0C util= 62% ms/iter= 16.31 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 120.0W 41.0C util= 48% ms/iter= 16.40 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 112.2W 41.0C util= 48% ms/iter= 15.46 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 112.2W 41.0C util= 48% ms/iter= 12.63 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 119.2W 41.0C util= 62% ms/iter= 12.61 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 119.2W 41.0C util= 62% ms/iter= 12.64 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 126.8W 41.0C util= 62% ms/iter= 12.62 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 126.8W 41.0C util= 62% ms/iter= 12.66 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.7W 41.0C util= 62% ms/iter= 12.64 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.7W 41.0C util= 62% ms/iter= 12.58 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.62 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 128.6W 41.0C util= 62% ms/iter= 12.60 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.5W 41.0C util= 52% ms/iter= 15.23 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 127.5W 41.0C util= 52% ms/iter= 16.41 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 120.1W 41.0C util= 52% ms/iter= 16.40 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 112.4W 41.0C util= 46% ms/iter= 17.32 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 106.4W 40.0C util= 46% ms/iter= 21.27 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 106.4W 40.0C util= 46% ms/iter= 16.36 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 106.3W 41.0C util= 48% ms/iter= 16.39 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 110.9W 41.0C util= 48% ms/iter= 16.37 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz 110.9W 41.0C util= 48% ms/iter= 16.35 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  95.1W 39.0C util= 34% ms/iter= 35.53 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  86.4W 40.0C util= 33% ms/iter= 22.97 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  84.8W 39.0C util= 33% ms/iter= 35.08 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  83.4W 40.0C util= 28% ms/iter= 22.03 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1950MHz  88.4W 39.0C util= 28% ms/iter= 27.35 [LOCKED]
+[LIVE] a=LOCK target=  1950MHz observed=  1302MHz  97.0W 40.0C util= 45% ms/iter= 18.27 [LOCKED]
+
+[deploy_live] resetting clocks and exiting...

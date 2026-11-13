@@ -1,0 +1,2 @@
+[live_resnet50_train] running for 60.0 min, batch=4, reporting every 20 iters -> /tmp/dvfs_workload_status.json
+[live_resnet50_train] stopped at step 60143
