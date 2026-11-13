@@ -101,6 +101,8 @@ DEBOUNCE_N = 1
 # here). Released if the parked level's live EDP degrades by more than LOCKIN_RELEASE_FRAC
 # against the value it had when chosen. 0 = off (default).
 LOCKIN_K = 0
+LOCKIN_MAX_SLOWDOWN = None   # e.g. 0.08: only park at levels whose live ms/iter is within 8% of the
+                             # fastest level seen so far (None = pick purely by lowest live EDP)
 LOCKIN_RELEASE_FRAC = 0.15
 LOCKIN_SETTLE_TICKS = 4      # ignore the first ticks after parking: the measurement window still
                              # mixes the previous clock (observed clock lags the commanded one)
@@ -128,7 +130,7 @@ def _wait_for_fresh_status(status_file, last_step, timeout_s):
 
 class LiveController:
     def __init__(self, weights_path, status_file, gpu_index=0, live=False, debounce_n=DEBOUNCE_N,
-                 lockin_k=LOCKIN_K):
+                 lockin_k=LOCKIN_K, lockin_max_slowdown=LOCKIN_MAX_SLOWDOWN):
         self.live = live
         self.status_file = status_file
 
@@ -153,6 +155,8 @@ class LiveController:
         self.current_core_mhz = self.hw["max_core_mhz"]  # start at max, like every offline episode start option
         self.debounce_n = debounce_n
         self.lockin_k = lockin_k
+        self.lockin_cap = lockin_max_slowdown
+        self.level_ms = {}
         self.target_hist = deque(maxlen=max(lockin_k, 1))
         self.level_edp = {}            # level key -> latest live EDP (P * t^2)
         self.parked_mhz = None
@@ -218,7 +222,12 @@ class LiveController:
         reversals = sum((deltas[i] > 0) != (deltas[i + 1] > 0) for i in range(len(deltas) - 1))
         if not (2 <= len(lv) <= 4) or reversals < 2 or any(l not in self.level_edp for l in lv):
             return None
-        best = min(lv, key=lambda l: self.level_edp[l])
+        cand = lv
+        if self.lockin_cap is not None and all(l in self.level_ms for l in lv):
+            ref = min(self.level_ms.values())
+            ok = [l for l in lv if self.level_ms[l] <= ref * (1.0 + self.lockin_cap)]
+            cand = ok or [min(lv, key=lambda l: self.level_ms[l])]
+        best = min(cand, key=lambda l: self.level_edp[l])
         return float(best * 25.0)
 
     def reset_clocks(self):
@@ -270,6 +279,7 @@ class LiveController:
 
         # measured under the clock that was in force during this window
         self.level_edp[self._lvl(self.current_core_mhz)] = raw["power_w"] * fresh["ms_per_iter"] ** 2
+        self.level_ms[self._lvl(self.current_core_mhz)] = fresh["ms_per_iter"]
 
         if self.parked_mhz is not None:
             cur = raw["power_w"] * fresh["ms_per_iter"] ** 2
@@ -337,10 +347,14 @@ def main():
     ap.add_argument("--lockin-k", type=int, default=LOCKIN_K,
                     help="park at the lower-live-EDP level once the last K clock targets alternate "
                          "between exactly two levels (0 = off)")
+    ap.add_argument("--lockin-max-slowdown", type=float, default=LOCKIN_MAX_SLOWDOWN,
+                    help="with --lockin-k: only park at levels within this fraction of the fastest "
+                         "live ms/iter seen (e.g. 0.08); default = pure lowest-EDP")
     a = ap.parse_args()
 
     controller = LiveController(a.weights, a.status_file, a.gpu_index, live=a.live,
-                                 debounce_n=a.debounce_n, lockin_k=a.lockin_k)
+                                 debounce_n=a.debounce_n, lockin_k=a.lockin_k,
+                                 lockin_max_slowdown=a.lockin_max_slowdown)
 
     def handle_exit(signum, frame):
         print("\n[deploy_live] resetting clocks and exiting...")

@@ -61,11 +61,36 @@ batch=4 (launch-bound) on this host: lock-in cut clock changes 0.81 -> 0.23/tick
 policy at batch=4 (an earlier host gave the old policy a saving there) -- treat batch=4 as
 unresolved, not as a lock-in failure or success.
 
+### Generalisation round (3rd host, Sweden 4090; `docs/results/lockin3_hw_trials/`, 2 reps each)
+Same `old` checkpoint unless stated; vs default driver. `cap8` = `--lockin-max-slowdown 0.08`.
+
+| workload | policy | power saving | slowdown | EDP gain | clock changes/tick |
+|---|---|---|---|---|---|
+| resnet50 train b=32 | old | 6.9% | 2.6% | +2.0% | 0.50 |
+| | old + lock-in | 30.4% | 13.9% | +9.7% | 0.05 |
+| | **old + lock-in cap8** | 23.2% | **5.9%** | **+13.8%** | 0.05 |
+| | rc0.30 + lock-in | 30.2% | 13.8% | +9.6% | 0.05 |
+| memory-bound (1 GiB elementwise) | old | 6.0% | 0.3% | +5.5% | 0.50 |
+| | **old + lock-in** | **21.6%** | **1.8%** | **+18.7%** | 0.04 |
+| compute-bound GEMM (6144^2) | old | 0.9% | 1.0% | -1.2% | 0.50 |
+| | old + lock-in | -0.1% | 0.0% | -0.1% | 0.04 |
+
+- ResNet result reproduces on a different host (30% here vs 33.6% on the previous one).
+- The slowdown cap is a free improvement: parking at a faster level gave a better EDP and 5.9%
+  slowdown vs 13.9%. Lock-in uses noisy live EDP, so the cap acts as a sanity guard.
+- Memory-bound: large win at almost no slowdown, as expected for DVFS.
+- Pure GEMM at 100% util: no policy saves anything (the default is already near-optimal), and
+  lock-in costs nothing while removing the cycling. `rc030_lock`/`dwell_s1_lock` pin at max and
+  never lock there.
+- Lock-in on `rc0.30` and on the dwell checkpoint also works on ResNet (they cycle under the
+  arbiter too), so it is not specific to the old checkpoint.
+
 ### Caveats / next steps
-- ONE host, ONE workload (`resnet50_train`), ONE checkpoint. Test a second live workload
-  (`live_glmark2_render`, a memory-bound one), a second 4090, and lock-in on other checkpoints.
-- Add a slowdown cap to the park choice (e.g. never park >8% slower than max) for a
-  saving-vs-speed dial.
+- Three hosts total, three workloads, still short (90 s) runs with a static workload. Untested:
+  phase-changing workloads (the 15% degradation release is the only re-adaptation), longer runs,
+  other GPU models, a real multi-tenant/shared GPU.
+- Batch=4 (launch-bound ResNet) remains unresolved: host-dependent for every policy.
+- Make `--lockin-max-slowdown 0.08` the recommended setting; consider defaulting lock-in on.
 - Rental notes: VM template `b7942f6bbc4374893ff66eb78145bbac` (docker.io/vastai/kvm) works via
   `vastai create instance <offer> --template_hash ... --disk 64`; SSH goes to the mapped
   22/tcp host port, not the ssh*.vast.ai proxy. The VM needs `nvidia-ml-py gymnasium pandas
