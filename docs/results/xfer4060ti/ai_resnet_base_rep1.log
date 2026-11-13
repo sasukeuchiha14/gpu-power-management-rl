@@ -1,0 +1,39 @@
+[deploy_live] NVIDIA GeForce RTX 4060 Ti | hw limits: {'max_core_mhz': 3105.0, 'max_mem_mhz': 9001.0, 'power_limit_w': 165.0, 'slowdown_temp_c': 97.0, 'total_vram_mb': 16380.0}
+[DRY_RUN] a=DEC  target=  2717MHz observed=  2790MHz 121.2W 56.0C util=100% ms/iter=141.99 resp=(0.50,0.50) tick_ms=  7.4
+[DRY_RUN] a=DEC  target=  2329MHz observed=  2790MHz 121.5W 56.0C util=100% ms/iter=141.96 resp=(0.50,0.50) tick_ms=  0.6
+[DRY_RUN] a=DEC  target=  1941MHz observed=  2790MHz 122.1W 55.0C util=100% ms/iter=141.96 resp=(0.50,0.50) tick_ms=  0.5
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2790MHz 121.8W 57.0C util=100% ms/iter=141.97 resp=(0.50,0.50) tick_ms=  0.6 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2790MHz 122.1W 57.0C util=100% ms/iter=141.99 resp=(0.50,0.50) tick_ms=  0.8 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2790MHz 122.8W 56.0C util=100% ms/iter=141.97 resp=(0.50,0.50) tick_ms=  0.7 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 121.6W 57.0C util=100% ms/iter=142.15 resp=(0.46,0.79) tick_ms=  0.7 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 121.4W 59.0C util=100% ms/iter=142.18 resp=(0.50,0.50) tick_ms=  0.6 [ARBITER]
+[DRY_RUN] a=DEC  target=  2717MHz observed=  2775MHz 121.4W 59.0C util=100% ms/iter=142.20 resp=(0.50,0.50) tick_ms=  0.6
+[DRY_RUN] a=DEC  target=  2329MHz observed=  2775MHz 122.3W 58.0C util=100% ms/iter=142.15 resp=(0.50,0.50) tick_ms=  0.6
+[DRY_RUN] a=DEC  target=  1941MHz observed=  2775MHz 122.4W 57.0C util=100% ms/iter=142.19 resp=(0.50,0.50) tick_ms=  0.6
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 121.9W 60.0C util=100% ms/iter=142.14 resp=(0.50,0.50) tick_ms=  0.6 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 122.4W 59.0C util=100% ms/iter=142.15 resp=(0.50,0.50) tick_ms=  0.8 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 122.8W 58.0C util=100% ms/iter=142.18 resp=(0.50,0.50) tick_ms=  0.6 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 123.2W 59.0C util=100% ms/iter=142.19 resp=(0.50,0.50) tick_ms=  0.7 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 122.6W 61.0C util=100% ms/iter=142.16 resp=(0.50,0.50) tick_ms=  0.6 [ARBITER]
+[DRY_RUN] a=DEC  target=  2717MHz observed=  2775MHz 122.9W 61.0C util=100% ms/iter=142.19 resp=(0.50,0.50) tick_ms=  0.6
+[DRY_RUN] a=DEC  target=  2329MHz observed=  2775MHz 123.1W 61.0C util=100% ms/iter=142.15 resp=(0.50,0.50) tick_ms=  0.6
+[DRY_RUN] a=DEC  target=  1941MHz observed=  2775MHz 123.5W 60.0C util= 99% ms/iter=142.16 resp=(0.50,0.50) tick_ms=  0.7
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 123.1W 62.0C util=100% ms/iter=142.16 resp=(0.50,0.50) tick_ms=  0.6 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 123.2W 62.0C util=100% ms/iter=142.15 resp=(0.50,0.50) tick_ms=  0.9 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 124.0W 60.0C util=100% ms/iter=142.16 resp=(0.50,0.50) tick_ms=  0.8 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 124.0W 61.0C util=100% ms/iter=142.16 resp=(0.50,0.50) tick_ms=  0.6 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 124.2W 62.0C util=100% ms/iter=142.16 resp=(0.50,0.50) tick_ms=  0.9 [ARBITER]
+[DRY_RUN] a=DEC  target=  2717MHz observed=  2775MHz 123.9W 63.0C util= 99% ms/iter=142.16 resp=(0.50,0.50) tick_ms=  0.8
+[DRY_RUN] a=DEC  target=  2329MHz observed=  2775MHz 124.5W 61.0C util=100% ms/iter=142.17 resp=(0.50,0.50) tick_ms=  0.6
+[DRY_RUN] a=DEC  target=  1941MHz observed=  2775MHz 125.7W 62.0C util=100% ms/iter=142.17 resp=(0.50,0.50) tick_ms=  0.6
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 125.3W 63.0C util=100% ms/iter=142.16 resp=(0.50,0.50) tick_ms=  0.6 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 125.5W 63.0C util=100% ms/iter=142.17 resp=(0.50,0.50) tick_ms=  0.8 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 125.8W 62.0C util=100% ms/iter=142.21 resp=(0.50,0.50) tick_ms=  0.6 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 126.0W 62.0C util=100% ms/iter=142.18 resp=(0.50,0.50) tick_ms=  0.5 [ARBITER]
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 125.6W 64.0C util=100% ms/iter=142.18 resp=(0.50,0.50) tick_ms=  0.6 [ARBITER]
+[DRY_RUN] a=DEC  target=  2717MHz observed=  2775MHz 125.7W 64.0C util=100% ms/iter=142.20 resp=(0.50,0.50) tick_ms=  0.5
+[DRY_RUN] a=DEC  target=  2329MHz observed=  2775MHz 126.1W 64.0C util=100% ms/iter=142.18 resp=(0.50,0.50) tick_ms=  0.5
+[DRY_RUN] a=DEC  target=  1941MHz observed=  2775MHz 126.0W 65.0C util=100% ms/iter=142.18 resp=(0.50,0.50) tick_ms=  0.5
+[DRY_RUN] a=DEC  target=  3105MHz observed=  2775MHz 126.7W 64.0C util=100% ms/iter=142.21 resp=(0.50,0.50) tick_ms=  0.6 [ARBITER]
+
+[deploy_live] resetting clocks and exiting...

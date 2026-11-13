@@ -1,0 +1,38 @@
+[deploy_live] NVIDIA GeForce RTX 4060 Ti | hw limits: {'max_core_mhz': 3105.0, 'max_mem_mhz': 9001.0, 'power_limit_w': 165.0, 'slowdown_temp_c': 97.0, 'total_vram_mb': 16380.0}
+[LIVE] a=DEC  target=  2717MHz observed=  2775MHz 126.0W 64.0C util=100% ms/iter=142.17 resp=(0.50,0.50) tick_ms= 22.2
+[LIVE] a=DEC  target=  2329MHz observed=  2730MHz 119.2W 63.0C util=100% ms/iter=142.63 resp=(0.47,1.00) tick_ms= 13.1
+[LIVE] a=DEC  target=  1941MHz observed=  2340MHz  91.4W 60.0C util=100% ms/iter=149.29 resp=(0.45,0.79) tick_ms= 10.9
+[LIVE] a=DEC  target=  3105MHz observed=  1950MHz  79.8W 59.0C util=100% ms/iter=158.70 resp=(0.44,0.62) tick_ms= 12.3 [ARBITER]
+[LIVE] a=DEC  target=  3105MHz observed=  2775MHz 125.6W 64.0C util=100% ms/iter=142.88 resp=(0.45,0.71) tick_ms=  9.7 [ARBITER]
+[LIVE] a=DEC  target=  3105MHz observed=  2775MHz 125.9W 63.0C util=100% ms/iter=142.18 resp=(0.50,0.50) tick_ms= 13.0 [ARBITER]
+[LIVE] a=DEC  target=  3105MHz observed=  2775MHz 126.2W 63.0C util=100% ms/iter=142.18 resp=(0.50,0.50) tick_ms=  9.6 [ARBITER]
+[LIVE] a=DEC  target=  3105MHz observed=  2775MHz 126.4W 63.0C util=100% ms/iter=142.18 resp=(0.50,0.50) tick_ms= 13.2 [ARBITER]
+[LOCKIN] cycle detected -> probing [3100, 2725, 2325, 1950] MHz
+[LIVE] a=DEC  target=  3100MHz observed=  2775MHz 126.9W 65.0C util=100% ms/iter=142.16 resp=(0.50,0.50) tick_ms= 34.4
+[LIVE] a=PROBE target=  3100MHz observed=  2775MHz 126.8W 65.0C util=100% ms/iter=142.20 [PROBING]
+[LIVE] a=PROBE target=  3100MHz observed=  2775MHz 126.6W 64.0C util= 99% ms/iter=142.19 [PROBING]
+[LIVE] a=PROBE target=  3100MHz observed=  2775MHz 126.9W 63.0C util=100% ms/iter=142.21 [PROBING]
+[LIVE] a=PROBE target=  2725MHz observed=  2775MHz 127.2W 64.0C util=100% ms/iter=142.18 [PROBING]
+[LIVE] a=PROBE target=  2725MHz observed=  2730MHz 118.6W 64.0C util=100% ms/iter=142.82 [PROBING]
+[LIVE] a=PROBE target=  2725MHz observed=  2730MHz 118.5W 64.0C util=100% ms/iter=142.81 [PROBING]
+[LIVE] a=PROBE target=  2725MHz observed=  2730MHz 117.8W 63.0C util=100% ms/iter=142.84 [PROBING]
+[LIVE] a=PROBE target=  2325MHz observed=  2730MHz 117.9W 63.0C util=100% ms/iter=142.82 [PROBING]
+[LIVE] a=PROBE target=  2325MHz observed=  2325MHz  89.8W 60.0C util=100% ms/iter=149.36 [PROBING]
+[LIVE] a=PROBE target=  2325MHz observed=  2325MHz  89.5W 59.0C util=100% ms/iter=149.67 [PROBING]
+[LIVE] a=PROBE target=  2325MHz observed=  2325MHz  89.3W 59.0C util=100% ms/iter=149.68 [PROBING]
+[LIVE] a=PROBE target=  1950MHz observed=  2325MHz  89.3W 60.0C util=100% ms/iter=149.67 [PROBING]
+[LIVE] a=PROBE target=  1950MHz observed=  1950MHz  79.7W 58.0C util=100% ms/iter=158.83 [PROBING]
+[LIVE] a=PROBE target=  1950MHz observed=  1950MHz  79.6W 58.0C util=100% ms/iter=158.88 [PROBING]
+[LIVE] a=PROBE target=  1950MHz observed=  1950MHz  79.5W 57.0C util=100% ms/iter=158.88 [PROBING]
+[LOCKIN] probe done {3100:2568909, 2725:2403973, 2325:2001593, 1950:2004935} -> parking at 2325 MHz
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz  88.5W 59.0C util=100% ms/iter=150.24 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz  88.6W 59.0C util=100% ms/iter=149.66 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz  88.4W 58.0C util=100% ms/iter=149.70 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz  88.4W 58.0C util=100% ms/iter=149.68 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz  88.2W 58.0C util=100% ms/iter=149.69 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz  88.3W 58.0C util=100% ms/iter=149.68 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz  88.2W 58.0C util=100% ms/iter=149.68 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz  88.2W 57.0C util=100% ms/iter=149.67 [LOCKED]
+[LIVE] a=LOCK target=  2325MHz observed=  2325MHz  88.2W 57.0C util=100% ms/iter=149.69 [LOCKED]
+
+[deploy_live] resetting clocks and exiting...

@@ -111,6 +111,27 @@ Same `old` checkpoint unless stated; vs default driver. `cap8` = `--lockin-max-s
   much lower on this host than the 23-30% seen on the other two, i.e. the lag problem also made the
   earlier steady results host-dependent; the probe makes them more consistent.
 
+### Other GPU models (`xfer3090/`, `xfer4060ti/`; `common/gpu_xfer_trials.sh`, `common/analysis/xfer_summary.py`)
+Same 4090-held-out checkpoint; lock-in = cap 8% + probe; vs default driver. No VM-capable 4070/4070 Ti/4080/3080
+hosts exist on vast.ai right now (rows 2/10 blocker unchanged). RTX 4060 Ti is an UNSEEN GPU model.
+
+| GPU | workload | old policy | lock-in |
+|---|---|---|---|
+| RTX 3090 | memory-bound | 10.0% saving, EDP +10.0% | **30.8%, 0% slower, EDP +30.8%** |
+| | phased, memory phase | 10.8% | **28.3%** (EDP +28.4%) |
+| | phased, compute phase | 2.5% | 3.2%, 1.4% slower (EDP +0.6%) |
+| | ResNet b=32 (100 s) | 11.3%, 3.7% slower, EDP +4.6% | 7.8%, 2.2% slower, EDP +3.7% |
+| | ResNet b=32 (7 min) | -- | 5.0%, 0.5% slower, EDP +4.0%, parked 92% |
+| RTX 4060 Ti | memory-bound | 9.2% | **17.2%**, 0% slower |
+| | phased, memory phase | 7.1% | **14.4%** (EDP +13.8%) |
+| | ResNet b=32 (100 s) | 7.3% | 16.1% (probe = 45% of a short run) |
+| | ResNet b=32 (7 min) | -- | **29.1%, 5.3% slower, EDP +21.4%** |
+
+- The 8% slowdown cap is a dial, not a universal optimum: on the 3090 ResNet it excluded the best-EDP
+  level (1575 MHz, probe EDP 1.38M vs 1.62M at the 1850 MHz it parked at), so that case was modest.
+- Probe cost is counted in TICKS, and a tick is one workload report window. For slow workloads
+  (4060 Ti ResNet: 2.8 s/tick) 16 probe ticks = 45 s, so short runs undersell the lock-in.
+
 ### Caveats / next steps
 - Four hosts, four workload shapes (ResNet b=32, memory-bound, GEMM, phased), 90-150 s runs. Untested:
   longer runs, other GPU models, a real multi-tenant/shared GPU, phase lengths shorter than ~20 s

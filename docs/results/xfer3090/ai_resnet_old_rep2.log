@@ -1,0 +1,75 @@
+[deploy_live] NVIDIA GeForce RTX 3090 | hw limits: {'max_core_mhz': 2100.0, 'max_mem_mhz': 9751.0, 'power_limit_w': 420.0, 'slowdown_temp_c': 95.0, 'total_vram_mb': 24576.0}
+[LIVE] a=DEC  target=  1838MHz observed=  1875MHz 393.1W 74.0C util=100% ms/iter= 65.83 resp=(0.50,0.50) tick_ms= 17.7
+[LIVE] a=DEC  target=  1575MHz observed=  1845MHz 370.4W 73.0C util=100% ms/iter= 66.25 resp=(0.43,1.00) tick_ms= 11.6
+[LIVE] a=DEC  target=  1312MHz observed=  1575MHz 270.4W 69.0C util=100% ms/iter= 71.37 resp=(0.42,0.83) tick_ms= 19.8
+[LIVE] a=INC  target=  2100MHz observed=  1320MHz 232.5W 67.0C util=100% ms/iter= 78.70 resp=(0.41,0.64) tick_ms= 11.0 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 336.8W 72.0C util=100% ms/iter= 67.38 resp=(0.43,0.67) tick_ms=  8.4 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 393.7W 72.0C util=100% ms/iter= 65.60 resp=(0.50,0.50) tick_ms=  8.4 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 394.0W 72.0C util=100% ms/iter= 65.60 resp=(0.50,0.50) tick_ms=  9.5 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 394.0W 73.0C util=100% ms/iter= 65.61 resp=(0.50,0.50) tick_ms=  8.8 [ARBITER]
+[LIVE] a=DEC  target=  1838MHz observed=  1890MHz 393.7W 73.0C util=100% ms/iter= 65.59 resp=(0.50,0.50) tick_ms= 10.6
+[LIVE] a=DEC  target=  1575MHz observed=  1845MHz 360.4W 71.0C util= 99% ms/iter= 66.32 resp=(0.42,1.00) tick_ms= 13.2
+[LIVE] a=DEC  target=  1312MHz observed=  1575MHz 285.9W 68.0C util=100% ms/iter= 71.39 resp=(0.42,0.74) tick_ms= 15.4
+[LIVE] a=INC  target=  2100MHz observed=  1320MHz 231.3W 66.0C util= 99% ms/iter= 78.74 resp=(0.41,0.70) tick_ms= 15.9 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 346.0W 71.0C util=100% ms/iter= 67.31 resp=(0.43,0.69) tick_ms= 12.6 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 390.8W 71.0C util=100% ms/iter= 65.64 resp=(0.50,0.50) tick_ms=  9.8 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 391.1W 71.0C util=100% ms/iter= 65.65 resp=(0.50,0.50) tick_ms=  8.6 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 390.8W 71.0C util=100% ms/iter= 65.66 resp=(0.50,0.50) tick_ms= 12.6 [ARBITER]
+[LIVE] a=DEC  target=  1838MHz observed=  1890MHz 391.4W 71.0C util=100% ms/iter= 65.65 resp=(0.50,0.50) tick_ms= 14.7
+[LIVE] a=DEC  target=  1575MHz observed=  1845MHz 365.0W 70.0C util=100% ms/iter= 66.40 resp=(0.42,0.98) tick_ms= 16.3
+[LIVE] a=DEC  target=  1312MHz observed=  1575MHz 279.6W 67.0C util=100% ms/iter= 71.41 resp=(0.42,0.78) tick_ms= 15.2
+[LIVE] a=INC  target=  2100MHz observed=  1320MHz 232.8W 66.0C util=100% ms/iter= 78.74 resp=(0.41,0.67) tick_ms= 16.1 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 357.7W 70.0C util=100% ms/iter= 67.21 resp=(0.43,0.70) tick_ms=  8.4 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 393.7W 70.0C util=100% ms/iter= 65.55 resp=(0.50,0.50) tick_ms= 10.0 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 392.9W 70.0C util=100% ms/iter= 65.57 resp=(0.50,0.50) tick_ms= 11.9 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 394.8W 71.0C util=100% ms/iter= 65.56 resp=(0.50,0.50) tick_ms= 13.4 [ARBITER]
+[LIVE] a=DEC  target=  1838MHz observed=  1890MHz 392.9W 71.0C util=100% ms/iter= 65.60 resp=(0.50,0.50) tick_ms= 11.2
+[LIVE] a=DEC  target=  1575MHz observed=  1845MHz 364.3W 70.0C util=100% ms/iter= 66.32 resp=(0.42,1.00) tick_ms= 11.3
+[LIVE] a=DEC  target=  1312MHz observed=  1575MHz 273.5W 67.0C util=100% ms/iter= 71.39 resp=(0.42,0.80) tick_ms= 10.7
+[LIVE] a=INC  target=  2100MHz observed=  1320MHz 229.7W 65.0C util=100% ms/iter= 78.75 resp=(0.41,0.66) tick_ms= 16.1 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1905MHz 368.7W 70.0C util=100% ms/iter= 67.19 resp=(0.43,0.71) tick_ms= 11.3 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 392.6W 70.0C util=100% ms/iter= 65.55 resp=(1.00,0.00) tick_ms=  9.8 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 391.5W 70.0C util=100% ms/iter= 65.60 resp=(0.50,0.50) tick_ms=  8.0 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 393.4W 70.0C util=100% ms/iter= 65.56 resp=(0.50,0.50) tick_ms= 12.9 [ARBITER]
+[LIVE] a=DEC  target=  1838MHz observed=  1890MHz 391.8W 71.0C util=100% ms/iter= 65.60 resp=(0.50,0.50) tick_ms= 14.4
+[LIVE] a=DEC  target=  1575MHz observed=  1845MHz 360.7W 70.0C util=100% ms/iter= 66.32 resp=(0.42,1.00) tick_ms= 15.7
+[LIVE] a=DEC  target=  1312MHz observed=  1575MHz 266.0W 66.0C util=100% ms/iter= 71.39 resp=(0.42,0.82) tick_ms= 14.6
+[LIVE] a=INC  target=  2100MHz observed=  1320MHz 228.7W 65.0C util=100% ms/iter= 78.74 resp=(0.41,0.64) tick_ms= 16.5 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 381.6W 69.0C util=100% ms/iter= 67.15 resp=(0.43,0.74) tick_ms= 18.5 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 395.1W 70.0C util=100% ms/iter= 65.48 resp=(0.50,0.50) tick_ms= 11.6 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 388.8W 70.0C util=100% ms/iter= 65.60 resp=(0.50,0.50) tick_ms=  9.9 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 390.2W 70.0C util=100% ms/iter= 65.56 resp=(0.50,0.50) tick_ms=  7.5 [ARBITER]
+[LIVE] a=DEC  target=  1838MHz observed=  1905MHz 388.7W 71.0C util=100% ms/iter= 65.58 resp=(0.51,0.42) tick_ms= 17.2
+[LIVE] a=DEC  target=  1575MHz observed=  1845MHz 356.5W 70.0C util=100% ms/iter= 66.31 resp=(0.44,0.95) tick_ms= 14.7
+[LIVE] a=DEC  target=  1312MHz observed=  1575MHz 264.0W 67.0C util=100% ms/iter= 71.29 resp=(0.42,0.82) tick_ms= 16.5
+[LIVE] a=INC  target=  2100MHz observed=  1320MHz 227.3W 65.0C util=100% ms/iter= 78.66 resp=(0.41,0.64) tick_ms= 15.0 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 388.0W 70.0C util=100% ms/iter= 67.40 resp=(0.43,0.75) tick_ms= 15.1 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 391.5W 71.0C util=100% ms/iter= 65.54 resp=(0.50,0.50) tick_ms=  8.1 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 389.8W 71.0C util=100% ms/iter= 65.59 resp=(0.50,0.50) tick_ms=  9.1 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 391.1W 71.0C util= 99% ms/iter= 65.54 resp=(0.50,0.50) tick_ms= 11.5 [ARBITER]
+[LIVE] a=DEC  target=  1838MHz observed=  1890MHz 389.8W 71.0C util=100% ms/iter= 65.59 resp=(0.50,0.50) tick_ms= 15.9
+[LIVE] a=DEC  target=  1575MHz observed=  1845MHz 356.9W 70.0C util=100% ms/iter= 66.31 resp=(0.42,1.00) tick_ms= 13.3
+[LIVE] a=DEC  target=  1312MHz observed=  1575MHz 263.7W 67.0C util=100% ms/iter= 71.26 resp=(0.42,0.82) tick_ms= 16.5
+[LIVE] a=INC  target=  2100MHz observed=  1320MHz 226.7W 66.0C util=100% ms/iter= 78.64 resp=(0.41,0.64) tick_ms= 10.6 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1905MHz 323.8W 71.0C util=100% ms/iter= 67.52 resp=(0.43,0.66) tick_ms=  9.7 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 389.6W 71.0C util=100% ms/iter= 65.57 resp=(1.00,0.00) tick_ms= 11.3 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 389.7W 72.0C util=100% ms/iter= 65.60 resp=(0.50,0.50) tick_ms= 13.0 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 389.5W 72.0C util=100% ms/iter= 65.60 resp=(0.50,0.50) tick_ms=  7.9 [ARBITER]
+[LIVE] a=DEC  target=  1838MHz observed=  1890MHz 389.7W 72.0C util=100% ms/iter= 65.60 resp=(0.50,0.50) tick_ms= 11.6
+[LIVE] a=DEC  target=  1575MHz observed=  1845MHz 356.8W 71.0C util=100% ms/iter= 66.32 resp=(0.42,1.00) tick_ms= 15.0
+[LIVE] a=DEC  target=  1312MHz observed=  1575MHz 263.4W 68.0C util= 99% ms/iter= 71.25 resp=(0.42,0.82) tick_ms= 15.3
+[LIVE] a=INC  target=  2100MHz observed=  1320MHz 226.7W 66.0C util=100% ms/iter= 78.61 resp=(0.41,0.64) tick_ms= 15.4 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 327.5W 71.0C util=100% ms/iter= 67.62 resp=(0.43,0.67) tick_ms= 14.0 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 386.7W 72.0C util=100% ms/iter= 65.65 resp=(0.50,0.50) tick_ms= 12.8 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 386.8W 72.0C util=100% ms/iter= 65.66 resp=(0.50,0.50) tick_ms=  9.6 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 388.3W 73.0C util=100% ms/iter= 65.63 resp=(0.50,0.50) tick_ms=  7.7 [ARBITER]
+[LIVE] a=DEC  target=  1838MHz observed=  1890MHz 388.2W 73.0C util=100% ms/iter= 65.65 resp=(0.50,0.50) tick_ms= 15.9
+[LIVE] a=DEC  target=  1575MHz observed=  1845MHz 354.8W 72.0C util=100% ms/iter= 66.39 resp=(0.42,1.00) tick_ms= 16.6
+[LIVE] a=DEC  target=  1312MHz observed=  1575MHz 276.5W 69.0C util=100% ms/iter= 71.26 resp=(0.43,0.76) tick_ms= 16.3
+[LIVE] a=INC  target=  2100MHz observed=  1320MHz 226.9W 67.0C util=100% ms/iter= 78.61 resp=(0.41,0.69) tick_ms= 15.5 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 354.1W 72.0C util=100% ms/iter= 67.59 resp=(0.43,0.71) tick_ms= 13.7 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 390.8W 73.0C util=100% ms/iter= 65.60 resp=(0.50,0.50) tick_ms=  8.6 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 391.1W 73.0C util=100% ms/iter= 65.60 resp=(0.50,0.50) tick_ms= 10.0 [ARBITER]
+[LIVE] a=DEC  target=  2100MHz observed=  1890MHz 391.6W 74.0C util=100% ms/iter= 65.59 resp=(0.50,0.50) tick_ms=  9.7 [ARBITER]
+
+[deploy_live] resetting clocks and exiting...
