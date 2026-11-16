@@ -13,9 +13,9 @@ what to do next — the main document) → [NORTHSTAR.md](NORTHSTAR.md) (end goa
 
 ---
 
-## IMMEDIATE NEXT STEP (as of 13 Nov 2026): cycle lock-in resolves the compute-bound trade-off on one 4090 -- needs a second workload and host before the paper calls it solved
+## IMMEDIATE NEXT STEP (as of 14 Nov 2026): cycle lock-in resolves the compute-bound trade-off on 4090/3090/4060 Ti hosts -- see `oscillation_update.md` for the summary; remaining: longer runs, shared GPUs, launch-bound batch=4, paper write-up
 
-The `reversal_cost` trade-off (below) was reopened. Reward shaping did NOT resolve it, but a
+Summary document: [oscillation_update.md](oscillation_update.md). The `reversal_cost` trade-off (below) was reopened. Reward shaping did NOT resolve it, but a
 deployment-side **cycle lock-in** did, with no retraining.
 
 ### What failed (offline screen, then hardware)

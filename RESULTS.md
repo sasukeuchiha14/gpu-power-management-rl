@@ -268,6 +268,29 @@ are mutually exclusive across every configuration tested, confirmed across
 5 independent real-hardware trials."* This is a stronger, more specific,
 more defensible claim than "we fixed the limit cycle" — state it that way.
 
+### 7.4 Update (13–14 Nov 2026): deployment-side cycle lock-in resolves the compute-bound trade-off
+
+Full writeup: [oscillation_update.md](oscillation_update.md). Raw: `docs/results/lockin*_hw_trials/`,
+`phased_hw_trials/`, `probe_*_trials/`, `xfer3090/`, `xfer4060ti/`.
+
+Four more reward-shaping variants (`reversal_window`, `hold_bonus`, `reversal_util_scale`) looked good
+offline and failed on hardware, so the §7.3 trade-off was attacked at deployment instead: detect a
+short cycle, probe each visited level for a clean EDP, park at the best (optional slowdown cap),
+release on EDP degradation or a work shift. No retraining.
+
+| RTX 4090, ResNet-50 train, batch=32, vs default driver | power saving | slowdown | EDP gain | clock changes/tick |
+|---|---|---|---|---|
+| `reversal_cost=0.30` | -0.7% | 1.1% | -3.0% | 0.04 |
+| old pure-log | 7.6% | 2.8% | +2.3% | 0.51 |
+| **old + lock-in** | **33.6%** | 14.4% | **+13.1%** | **0.05** |
+| old + lock-in, 8% cap (other host) | 23.2% | **5.9%** | **+13.8%** | 0.05 |
+
+**Verdict: 🟡 Citable, replaces the "mutually exclusive" reading of §7.3 for compute-bound work.**
+Memory-bound 17-31% saving at about 0-2% slowdown on 4090/3090/4060 Ti (the 4060 Ti is not in the
+training fleet); the phase-changing workload needed a probe-before-park fix (memory phase 1.4% -> 20.2%).
+Limits: launch-bound batch=4 unresolved, runs mostly 90-150 s, no shared-GPU or sub-20 s-phase tests,
+2-3 reps per host, the 8% cap is not tuned per GPU. State the ~14% uncapped slowdown next to the saving.
+
 ---
 
 ## 8. Fleet coverage and the one open gap
@@ -376,7 +399,7 @@ can report real trip rates under both tested regimes.
 1. **§1, the headline result** — response-aware state beats a tuned fixed
    clock, leave-one-GPU-out, with the paired-comparison statistic. This is
    the paper's main contribution.
-2. **§7.3, the limit-cycle hardware confirmation** — a condition-dependent
+2. **§7.3 + §7.4, the limit-cycle hardware confirmation and the lock-in that resolves it** — a condition-dependent
    trade-off confirmed across 5 independent real-hardware trials is
    unusually strong, specific evidence for a DVFS-RL paper; most papers in
    this space don't hardware-validate failure modes this thoroughly.

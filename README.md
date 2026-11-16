@@ -37,6 +37,10 @@ git branch --show-current       # must print: unified-model
 
 ---
 
+> **Latest (13–14 Nov 2026):** the clock-oscillation vs power-saving trade-off is resolved on real
+> hardware by a deployment-side cycle lock-in (RTX 4090 ResNet-50 batch=32: saving -0.7% -> 23-34%,
+> clock changes 0.51 -> 0.05 per tick). Details, limits and open items: [oscillation_update.md](oscillation_update.md).
+
 ## The two results worth knowing
 
 ### 1. A static clock is a very strong baseline

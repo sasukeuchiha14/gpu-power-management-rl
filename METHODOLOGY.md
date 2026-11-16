@@ -550,6 +550,19 @@ never actually been measured on 4 of the 5 GPUs before. The honest result:
 the settle point rises on *every* GPU under the fix, a real, quantified
 cost in downclocking aggressiveness, not the clean win first reported.
 
+**Epilogue (13–14 Nov 2026): the trade-off was a property of reward shaping, not of the problem.**
+Four more reward-shaping variants (`reversal_window`, `hold_bonus`, `reversal_util_scale`) again
+looked good in a 3-seed offline screen and failed on hardware, the same screen-overstates lesson as
+`action_cost`. Reading the hardware logs instead of tuning further gave two findings: the cycle
+itself is cheap (~5% energy/iter), and the do-no-harm arbiter drives much of the compute-bound
+"cycle" (active ~61% of ticks), so a penalty on policy reversals could never reach it. The fix that
+worked sits at deployment: detect a short cycle, probe each visited level for a clean EDP, park at
+the best one, release on EDP degradation or work shift (`deploy_live.py --lockin-k`). Each component
+was added because a hardware run exposed a specific failure (telemetry lag making max clock look
+falsely cheapest, parking at the wrong clock after a phase change, probe cost on slow workloads).
+Method lesson: when a fix keeps failing at the layer where you tried it, check which component is
+actually producing the symptom before tuning further. Writeup: [oscillation_update.md](oscillation_update.md).
+
 **Then three rounds of real-hardware confirmation**, because offline
 cycle-rate and cost metrics — however rigorously multi-seeded — are still a
 simulation of a simulation (the table-backed environment, §4) until

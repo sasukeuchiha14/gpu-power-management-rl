@@ -76,7 +76,7 @@ auditable.
 | `common/unified_env.py` | Multi-GPU Gymnasium env | `discover_datasets()` globs `gpus/*/data/preprocessed_dataset.csv`; `--holdout` support for leave-one-GPU-out. |
 | `common/train_unified_v2.py` | Configurable DDQN trainer | `QNet`, `Cfg`, `train()`, `GreedyAgent`. Every reward-shaping/action-shaping knob this project tried lives in `Cfg` (§7). |
 | `common/eval_policies.py` | Policy-agnostic evaluation + full baseline suite | `rollout()`, `evaluate_policy()`, and every baseline policy (`p_governor`, `p_fixed`, `p_hillclimb`, `p_agent`, …). |
-| `common/deploy_live.py` | Live deployment daemon | `LiveController`: NVML read → feature build → policy → Layer 2 arbiter → clock write, every 200ms. |
+| `common/deploy_live.py` | Live deployment daemon | `LiveController`: NVML read → feature build → policy → Layer 2 arbiter → clock write, every 200ms. Optional cycle lock-in (`--lockin-k`): detects a short clock cycle, probes each visited level, parks at the best-EDP one, releases on EDP degradation or work shift. See `oscillation_update.md`. |
 | `gpus/rtx3050ti_laptop/deployment/arbiter.py` | `DoNoHarmArbiter` | Imported unmodified by `deploy_live.py` — not reimplemented per deployment target. |
 | `common/analysis/*.py` | Every experiment and sweep that produced a reported number | One script per experiment; each is a standalone, re-runnable record (§4 of METHODOLOGY.md explains why this convention exists). |
 
